@@ -13,11 +13,10 @@ This repository contains the source code for a dual-player Billiards game create
 5. [Usage](#usage)
 6. [Running the Game](#running-the-game)
 7. [Directory Structure](#directory-structure)
-8. [Scripts](#scripts)
-9. [Contributing](#contributing)
-10. [License](#license)
-11. [Contact](#contact)
-12. [Acknowledgements](#acknowledgements)
+8. [Contributing](#contributing)
+9. [License](#license)
+10. [Contact](#contact)
+11. [Acknowledgements](#acknowledgements)
 
 ## Features
 - Realistic billiards physics and graphics
@@ -94,10 +93,6 @@ Billiards/
 ├── freetype.dll       # FreeType library for font rendering.
 ├── log/               # Directory for log files (empty initially).
 ```
-
-## Scripts
-- [List any scripts or important files here]
-
 ## Contributing
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/YourFeature`)
@@ -109,7 +104,7 @@ Billiards/
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contact
-If you have any questions or issues, please contact [your-email@example.com](mailto:your-email@example.com).
+If you have any questions or issues, please contact [your-email@example.com](konstantinostoutounas@gmail.com).
 
 ## Acknowledgements
 - Special thanks to the contributors and open-source libraries that made this project possible.
