@@ -47,7 +47,7 @@ void Camera::UpdateMain(const std::shared_ptr<Shader>& main_shader, const World&
 	main_shader->SetMat4(projection_matrix_, "projectionMatrix");
 	main_shader->SetVec3(position_, "cameraPos");
 
-	const int max_shader_lights = 14;  // Matches `lights[14]` in the shader
+	const int max_shader_lights = Config::max_shader_lights; // Matches `lights[14]` in the shader
 
 	// 1. Set non-physical lights
 	for (int i = 0; i < Config::light_count; i++) {
@@ -55,6 +55,7 @@ void Camera::UpdateMain(const std::shared_ptr<Shader>& main_shader, const World&
 		const float light_position_x = i % 2 ? 2.0f * i : -2.0f * i;
 		main_shader->SetVec3(glm::vec3(20.0f), std::string("lights[") + std::to_string(i) + "].color");
 		main_shader->SetVec3(glm::vec3(light_position_x, 2.0f, 0.0f), std::string("lights[") + std::to_string(i) + "].position");
+		main_shader->SetBool(true, "lights[" + std::to_string(i) + "].isOn");
 	}
 
 	// 2. Set physical lights
@@ -64,6 +65,7 @@ void Camera::UpdateMain(const std::shared_ptr<Shader>& main_shader, const World&
 		if (shader_index >= max_shader_lights) break;  // Prevent overflow
 		main_shader->SetVec3(lights[i]->GetColor(), std::string("lights[") + std::to_string(shader_index) + "].color");
 		main_shader->SetVec3(lights[i]->GetPosition(), std::string("lights[") + std::to_string(shader_index) + "].position");
+		main_shader->SetBool(lights[i]->IsOn(), "lights[" + std::to_string(shader_index) + "].isOn");
 	}
 
 	// 3. Set `lightCount` to the correct number
@@ -76,12 +78,14 @@ void Camera::UpdateMain(const std::shared_ptr<Shader>& main_shader, const World&
 	main_shader->SetInt(total_lights, "lightCount");
 
 	if (glfwGetKey(glfwGetCurrentContext(), GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-		main_shader->SetVec3(glm::vec3(10.0f), std::string("lights[") + std::to_string(Config::light_count) + "].color");
-		main_shader->SetVec3(position_, std::string("lights[") + std::to_string(Config::light_count) + "].position");
-		main_shader->SetInt(Config::light_count + 1, "lightCount");
-	}
-	else {
-		main_shader->SetInt(total_lights, "lightCount");
+		// example: treat the camera as a dynamic light
+		if (Config::light_count < max_shader_lights)
+		{
+			main_shader->SetVec3(glm::vec3(10.0f), std::string("lights[") + std::to_string(Config::light_count) + "].color");
+			main_shader->SetVec3(position_, std::string("lights[") + std::to_string(Config::light_count) + "].position");
+			main_shader->SetBool(true, "lights[" + std::to_string(Config::light_count) + "].isOn");
+			main_shader->SetInt(Config::light_count + 1, "lightCount");
+		}
 	}
 
 	main_shader->Unbind();
@@ -98,7 +102,7 @@ void Camera::UpdateBackground(const std::shared_ptr<Shader>& background_shader) 
 
 void Camera::Move(GLFWwindow* window, const glm::vec3& direction, const float factor)
 {
-	constexpr glm::vec3 up = {0.0f, 1.0f, 0.0f};
+	constexpr glm::vec3 up = { 0.0f, 1.0f, 0.0f };
 	const glm::vec3 right = glm::normalize(glm::cross(direction, up));
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -135,8 +139,8 @@ void Camera::Rotate(GLFWwindow* window, const float factor)
 	double current_cursor_x, current_cursor_y;
 	glfwGetCursorPos(window, &current_cursor_x, &current_cursor_y);
 
-	const glm::vec2 delta = {static_cast<float>(current_cursor_x) - prior_cursor_.x, static_cast<float>(current_cursor_y) - prior_cursor_.y};
-	prior_cursor_ = {current_cursor_x, current_cursor_y};
+	const glm::vec2 delta = { static_cast<float>(current_cursor_x) - prior_cursor_.x, static_cast<float>(current_cursor_y) - prior_cursor_.y };
+	prior_cursor_ = { current_cursor_x, current_cursor_y };
 
 	if (delta.x != 0.0f || delta.y != 0.0f)
 	{

@@ -12,6 +12,12 @@ struct Config final
 	inline static constexpr int height = 1080;
 	inline static constexpr const char* const window_name = "Billiards";
 
+	// Shadow
+	inline static constexpr int shadow_width = 1920;
+	inline static constexpr int shadow_height = 1920;
+	inline static constexpr float near_plane = 1.0f;
+	inline static constexpr float far_plane = 20.0f;
+
 	// Camera
 	inline static constexpr bool bound_camera = true;
 	inline static float fov = 1.3f;
@@ -25,6 +31,8 @@ struct Config final
 	// Shaders
 	inline static constexpr const char* const vertex_path = "shader.vertexshader";
 	inline static constexpr const char* const fragment_path = "shader.fragmentshader";
+	inline static constexpr const char* const depth_vertex_path = "Depth.vertexshader";
+	inline static constexpr const char* const depth_fragment_path = "Depth.fragmentshader";
 	inline static constexpr const char* const text_vertex_path = "text.vertexshader";
 	inline static constexpr const char* const text_fragment_path = "text.fragmentshader";
 	inline static constexpr const char* const cubemap_vertex_path = "cubemap.vertexshader";
@@ -35,11 +43,10 @@ struct Config final
 	inline static constexpr const char* const background_fragment_path = "background.fragmentshader";
 	inline static constexpr const char* const irradiance_fragment_path = "irradiance.fragmentshader";
 	inline static constexpr const char* const prefilter_fragment_path = "prefilter.fragmentshader";
-	inline static constexpr const char* const CueMap_fragment_path = "CueMap.fragmentshader";
 	inline static constexpr const char* const CueMap_vertex_path = "CueMap.vertexshader";
-	inline static constexpr const char* const sprite_fragment_path = "Spriteshader.fragmentshader";
+	inline static constexpr const char* const CueMap_fragment_path = "CueMap.fragmentshader";
 	inline static constexpr const char* const sprite_vertex_path = "Spriteshader.vertexshader";
-
+	inline static constexpr const char* const sprite_fragment_path = "Spriteshader.fragmentshader";
 
 
 	// Model
@@ -54,7 +61,10 @@ struct Config final
 	// Lighting
 	inline static constexpr int light_count = 3; // Existing lights controlled with LShift
 	inline static constexpr int physical_light_count = 10; // New physical lights controlled with numpad
-	inline static constexpr const char* const hdr_path = "comfy_cafe_4k.hdr";
+	inline static constexpr int max_shader_lights = 14; // Maximum number of lights in the shader
+	//inline static constexpr const char* const hdr_path = "comfy_cafe_4k.hdr";
+	//inline static constexpr const char* const hdr_path = "billiard_hall_4k.hdr";
+	inline static constexpr const char* const hdr_path = "empty_play_room_4k.hdr";
 	inline static constexpr int cube_map_size = 1024;
 	inline static constexpr int irradiance_scale = 32;
 	inline static constexpr int prefilter_scale = 256;
