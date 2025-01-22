@@ -1,11 +1,9 @@
 # Billiards
 
 ## Overview
-
 This repository contains the source code for a dual-player Billiards game created with OpenGL in Visual Studio. The game provides an immersive billiards experience with realistic graphics, physics, and customizable settings.
 
 ## Table of Contents
-
 1. [Features](#features)
 2. [Technologies Used](#technologies-used)
 3. [Libraries](#libraries)
@@ -16,13 +14,13 @@ This repository contains the source code for a dual-player Billiards game create
 8. [Usage](#usage)
 9. [Running the Game](#running-the-game)
 10. [Directory Structure](#directory-structure)
-11. [Contributing](#contributing)
-12. [License](#license)
-13. [Contact](#contact)
-14. [Acknowledgements](#acknowledgements)
+11. [Dependencies](#dependencies)
+12. [Contributing](#contributing)
+13. [License](#license)
+14. [Contact](#contact)
+15. [Acknowledgements](#acknowledgements)
 
 ## Features
-
 - Realistic billiards physics with customizable gameplay.
 - Dual-player mode with score tracking.
 - Control over camera movement, cue ball force, direction, and spin.
@@ -31,25 +29,21 @@ This repository contains the source code for a dual-player Billiards game create
 - Comprehensive enforcement of official billiards rules.
 
 ## Technologies Used
-
 - C
 - C++
 - OpenGL
 - Visual Studio
 
 ## Libraries
-
 The following libraries are used in the project:
-
 - **GLFW**: For handling window creation and input.
 - **GLAD**: For managing OpenGL extensions.
 - **GLM**: For mathematics related to graphics rendering.
 - **FreeType**: For rendering text.
-- **stb\_image**: For loading images as textures.
-- **tiny\_obj\_loader**: For loading 3D model files.
+- **stb_image**: For loading images as textures.
+- **tiny_obj_loader**: For loading 3D model files.
 
 ## Controls
-
 - **Camera Movement**: Use `W`, `A`, `S`, `D` to move the camera, and `Q`, `E` to move it up and down.
 - **Cue Ball Force & Direction**: Use arrow keys to adjust force and direction.
 - **Spin**: Adjust spin using the 2D projection of the cue ball.
@@ -57,9 +51,7 @@ The following libraries are used in the project:
 - **Game Settings**: Modify cue strike power and ball friction in-game.
 
 ## Game Rules
-
 The game adheres to official billiards rules, including:
-
 1. Players take turns striking the cue ball.
 2. A valid shot requires the cue ball to hit the target ball and then at least one ball must reach a rail or be pocketed.
 3. Fouls include:
@@ -71,49 +63,38 @@ The game adheres to official billiards rules, including:
 For detailed rules, refer to the [World Pool-Billiard Association (WPA)](https://wpapool.com/rules-of-play/).
 
 ## Prerequisites
-
 Before you begin, ensure you have:
-
 - Visual Studio installed with C++ development tools.
 - OpenGL support on your system.
 
 ## Installation
-
 ### Clone from GitHub
-
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/UltraDeveloper7/Billiards.git
-   cd Billiards
-   ```
+    ```bash
+    git clone https://github.com/UltraDeveloper7/Billiards.git
+    cd Billiards
+    ```
 
 ### Download as ZIP
-
 1. Download the ZIP file from GitHub:
-   - Go to the repository page.
-   - Click on the "Code" button and select "Download ZIP".
-   - Extract the ZIP file and navigate to the directory.
+    - Go to the repository page.
+    - Click on the "Code" button and select "Download ZIP".
+    - Extract the ZIP file and navigate to the directory.
 
 ## Usage
-
 To play the Billiards game, build and run the project in Visual Studio, then use the controls described above to interact with the game.
 
 ## Running the Game
-
 1. **Open the Project**:
-
    - Open the Visual Studio solution file (`Billiards.sln`) in the root directory.
 
 2. **Build the Project**:
-
    - Build the solution in Visual Studio to compile the game.
 
 3. **Run the Game**:
-
    - Start the game by running the compiled executable from Visual Studio.
 
 ## Directory Structure
-
 ```
 Billiards/
 ├── README.md
@@ -141,8 +122,18 @@ Billiards/
 ├── log/               # Directory for log files (empty initially).
 ```
 
-## Contributing
+## Dependencies
+- **Wavefront OBJ loading with MTL**: The game supports loading `.obj` files, including material files with Physically Based Rendering (PBR) extensions. All `.obj` models were created using Blender.
+- **PBR Point Lights**: Implements Physically Based Rendering (PBR) for point light sources, offering realistic lighting effects.
+- **IBL using HDR Irradiance Map and GGX Microfacet Model**: Uses Image-Based Lighting (IBL) with HDR maps for realistic reflections and lighting.
+- **Multiple Texture Maps per Material**: Supports multiple textures for each material, such as diffuse, specular, and normal maps.
+- **FreeType-Based Text Renderer**: Uses the FreeType library for rendering crisp and scalable text in the game.
+- **Deferred Scene Loading**: Loads scenes in a deferred manner to improve performance and responsiveness.
+- **Modifiable Point Light Count**: Allows dynamic adjustment of the number of point lights in the scene.
+- **Model Vertex Deduplication**: Optimizes 3D models by eliminating redundant vertices, reducing memory usage.
+- **Resizable Viewport with Text Scaling**: Ensures that the viewport adjusts dynamically to window resizing, maintaining proper text scaling and aspect ratio.
 
+## Contributing
 1. Fork the repository.
 2. Create your feature branch (`git checkout -b feature/YourFeature`).
 3. Commit your changes (`git commit -m 'Add some feature'`).
@@ -150,15 +141,12 @@ Billiards/
 5. Open a pull request.
 
 ## License
-
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contact
-
-If you have any questions or issues, please contact [konstantinostoutounas@gmail.com](mailto\:konstantinostoutounas@gmail.com).
+If you have any questions or issues, please contact [konstantinostoutounas@gmail.com](mailto:konstantinostoutounas@gmail.com).
 
 ## Acknowledgements
-
 - Special thanks to the contributors and open-source libraries that made this project possible.
 
 ---
