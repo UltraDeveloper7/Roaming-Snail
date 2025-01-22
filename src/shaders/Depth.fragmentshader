@@ -1,0 +1,6 @@
+#version 440 core
+void main()
+{
+    // Depth value is automatically written to the depth buffer
+    gl_FragDepth = gl_FragCoord.z;
+}
