@@ -1,72 +1,119 @@
 # Billiards
 
 ## Overview
-This repository contains the source code for a dual-player Billiards game created with OpenGL in Visual Studio. The game allows two players to compete in a realistic billiards environment.
+
+This repository contains the source code for a dual-player Billiards game created with OpenGL in Visual Studio. The game provides an immersive billiards experience with realistic graphics, physics, and customizable settings.
 
 ## Table of Contents
+
 1. [Features](#features)
 2. [Technologies Used](#technologies-used)
-3. [Prerequisites](#prerequisites)
-4. [Installation](#installation)
-    - [Clone from GitHub](#clone-from-github)
-    - [Download as ZIP](#download-as-zip)
-5. [Usage](#usage)
-6. [Running the Game](#running-the-game)
-7. [Directory Structure](#directory-structure)
-8. [Contributing](#contributing)
-9. [License](#license)
-10. [Contact](#contact)
-11. [Acknowledgements](#acknowledgements)
+3. [Libraries](#libraries)
+4. [Controls](#controls)
+5. [Game Rules](#game-rules)
+6. [Prerequisites](#prerequisites)
+7. [Installation](#installation)
+8. [Usage](#usage)
+9. [Running the Game](#running-the-game)
+10. [Directory Structure](#directory-structure)
+11. [Contributing](#contributing)
+12. [License](#license)
+13. [Contact](#contact)
+14. [Acknowledgements](#acknowledgements)
 
 ## Features
-- Realistic billiards physics and graphics
-- Dual-player mode
-- Score tracking and game rules enforcement
+
+- Realistic billiards physics with customizable gameplay.
+- Dual-player mode with score tracking.
+- Control over camera movement, cue ball force, direction, and spin.
+- 10 toggleable lights evenly placed around the table rim for enhanced visuals.
+- Ability to modify cue strike power and ball friction during the game.
+- Comprehensive enforcement of official billiards rules.
 
 ## Technologies Used
+
 - C
 - C++
 - OpenGL
 - Visual Studio
 
+## Libraries
+
+The following libraries are used in the project:
+
+- **GLFW**: For handling window creation and input.
+- **GLAD**: For managing OpenGL extensions.
+- **GLM**: For mathematics related to graphics rendering.
+- **FreeType**: For rendering text.
+- **stb\_image**: For loading images as textures.
+- **tiny\_obj\_loader**: For loading 3D model files.
+
+## Controls
+
+- **Camera Movement**: Use `W`, `A`, `S`, `D` to move the camera, and `Q`, `E` to move it up and down.
+- **Cue Ball Force & Direction**: Use arrow keys to adjust force and direction.
+- **Spin**: Adjust spin using the 2D projection of the cue ball.
+- **Lighting**: Toggle the 10 lights around the table rim.
+- **Game Settings**: Modify cue strike power and ball friction in-game.
+
+## Game Rules
+
+The game adheres to official billiards rules, including:
+
+1. Players take turns striking the cue ball.
+2. A valid shot requires the cue ball to hit the target ball and then at least one ball must reach a rail or be pocketed.
+3. Fouls include:
+   - Failing to hit any ball.
+   - Pocketing the cue ball.
+   - Hitting the opponent's ball first.
+4. The game ends when all balls of one player are pocketed, followed by the 8-ball, provided no foul is committed.
+
+For detailed rules, refer to the [World Pool-Billiard Association (WPA)](https://wpapool.com/rules-of-play/).
+
 ## Prerequisites
-Before you begin, ensure you have met the following requirements:
-- Visual Studio installed with C++ development tools
+
+Before you begin, ensure you have:
+
+- Visual Studio installed with C++ development tools.
+- OpenGL support on your system.
 
 ## Installation
-You can install the game by either cloning it from GitHub or downloading it as a ZIP file.
 
 ### Clone from GitHub
+
 1. Clone the repository:
-    ```bash
-    git clone https://github.com/UltraDeveloper7/Billiards.git
-    cd Billiards
-    ```
+   ```bash
+   git clone https://github.com/UltraDeveloper7/Billiards.git
+   cd Billiards
+   ```
 
 ### Download as ZIP
+
 1. Download the ZIP file from GitHub:
-    - Go to the [repository page](https://github.com/UltraDeveloper7/Billiards).
-    - Click on the "Code" button and select "Download ZIP".
-    - Extract the downloaded ZIP file.
-    - Navigate to the extracted directory:
-    ```bash
-    cd Billiards
-    ```
+   - Go to the repository page.
+   - Click on the "Code" button and select "Download ZIP".
+   - Extract the ZIP file and navigate to the directory.
 
 ## Usage
-To use the Billiards game, follow the instructions in the "Running the Game" section to start the game, then use the controls to play.
+
+To play the Billiards game, build and run the project in Visual Studio, then use the controls described above to interact with the game.
 
 ## Running the Game
+
 1. **Open the Project**:
-   - Open the Visual Studio solution file (`.sln`) in the root directory.
+
+   - Open the Visual Studio solution file (`Billiards.sln`) in the root directory.
 
 2. **Build the Project**:
+
    - Build the solution in Visual Studio to compile the game.
 
 3. **Run the Game**:
+
    - Start the game by running the compiled executable from Visual Studio.
 
 ## Directory Structure
+
 ```
 Billiards/
 ├── README.md
@@ -93,20 +140,25 @@ Billiards/
 ├── freetype.dll       # FreeType library for font rendering.
 ├── log/               # Directory for log files (empty initially).
 ```
+
 ## Contributing
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/YourFeature`)
-3. Commit your changes (`git commit -m 'Add some feature'`)
-4. Push to the branch (`git push origin feature/YourFeature`)
-5. Open a pull request
+
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/YourFeature`).
+3. Commit your changes (`git commit -m 'Add some feature'`).
+4. Push to the branch (`git push origin feature/YourFeature`).
+5. Open a pull request.
 
 ## License
+
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Contact
-If you have any questions or issues, please contact [your-email@example.com](konstantinostoutounas@gmail.com).
+
+If you have any questions or issues, please contact [konstantinostoutounas@gmail.com](mailto\:konstantinostoutounas@gmail.com).
 
 ## Acknowledgements
+
 - Special thanks to the contributors and open-source libraries that made this project possible.
 
 ---
