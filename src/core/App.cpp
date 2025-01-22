@@ -1,6 +1,6 @@
-#include "../stdafx.h"
+﻿#include "../stdafx.h"
 #include "App.hpp"
-#include "../objects/CueBallMap.hpp" 
+#include "../objects/CueBallMap.hpp"
 
 App::App() :
 	window_(std::make_unique<Window>()),
@@ -9,8 +9,10 @@ App::App() :
 	main_shader_(std::make_shared<Shader>(Config::vertex_path, Config::fragment_path)),
 	background_shader_(std::make_shared<Shader>(Config::background_vertex_path, Config::background_fragment_path)),
 	gui_shader_(std::make_shared<Shader>(Config::CueMap_vertex_path, Config::CueMap_fragment_path)),
+	depthShader(std::make_shared<Shader>(Config::depth_vertex_path, Config::depth_fragment_path)),
 	camera_(std::make_unique<Camera>()),
-	cue_ball_map_(std::make_shared<CueBallMap>(*camera_, window_->GetGLFWWindow()))
+	cue_ball_map_(std::make_shared<CueBallMap>(*camera_, window_->GetGLFWWindow())),
+	lightSpaceMatrices_{}
 {
 	Logger::Init("log.txt");
 	text_renderer_->Init();
@@ -53,6 +55,34 @@ void App::OnUpdate()
 		camera_->UpdateMain(main_shader_, *world_);
 
 		environment_->Prepare();
+
+		//-----------------------------------------------//
+		// 1) Render all the shadow maps
+		RenderShadowMap();
+
+		// (2) Bind each shadow map & pass lightSpaceMatrix
+		main_shader_->Bind();
+
+		// total_lights is again the sum of virtual + physical
+		int total_lights = Config::light_count + (int)world_->GetLights().size();
+		int finalLightCount = std::min(total_lights, Config::max_shader_lights);
+
+		for (int i = 0; i < Config::max_shader_lights; i++)
+		{
+			// 2a) Bind shadowMap[i]
+			glActiveTexture(GL_TEXTURE0 + 9 + i);
+			glBindTexture(GL_TEXTURE_2D, environment_->depthMap[i]);
+
+			std::string uniformName = "shadowMap[" + std::to_string(i) + "]";
+			main_shader_->SetInt(9 + i, uniformName.c_str());
+
+			// 2b) Upload lightSpaceMatrix[i]
+			std::string matName = "lightSpaceMatrix[" + std::to_string(i) + "]";
+			main_shader_->SetMat4(lightSpaceMatrices_[i], matName.c_str());
+		}
+		main_shader_->Unbind();
+		//-----------------------------------------------//
+
 		world_->Update(static_cast<float>(delta_time_), !in_menu_);
 		world_->Draw(main_shader_);
 
@@ -68,7 +98,7 @@ void App::OnUpdate()
 			cue_ball_map_->Draw();
 			cue_ball_map_->HandleMouseInput(window_->GetGLFWWindow());
 		}
-		
+
 	}
 
 	if (in_menu_)
@@ -165,6 +195,92 @@ void App::Load()
 	main_shader_->SetInt(7, "material.aoMap");
 	main_shader_->SetInt(8, "material.metallicMap");
 	main_shader_->Unbind();
+}
+
+
+void App::RenderShadowMap()
+{
+	// We'll produce an orthographic projection for each shadow:
+	glm::mat4 lightProjection = glm::ortho(
+		-20.0f, 20.0f,
+		-20.0f, 20.0f,
+		Config::near_plane,
+		Config::far_plane
+	);
+
+	// We have 3 “virtual” (non‐physical) lights + however many physical are in World
+	// total_lights = 3 + e.g. 10 => up to 13
+	const auto& physicalLights = world_->GetLights(); // The 10 real bulbs
+	const int total_lights = Config::light_count + static_cast<int>(physicalLights.size());
+
+	// For safety, clamp to max_shader_lights so we don't exceed our array
+	int finalLightCount = std::min(total_lights, Config::max_shader_lights);
+
+	for (int i = 0; i < finalLightCount; i++)
+	{
+		// 1) Determine the position of this i-th light.
+		glm::vec3 lightPos;
+		bool isOn = true;  // We'll override if it's a physical light that is off
+
+		if (i < Config::light_count)
+		{
+			// This is one of the 3 virtual lights
+			// Example logic from Camera::UpdateMain:
+			// e.g. float light_position_x = i % 2 ? 2.0f*i : -2.0f*i;
+			// place them at (light_position_x, 2.0, 0.0)
+			const float light_position_x = (i % 2) ? 2.0f * i : -2.0f * i;
+			lightPos = glm::vec3(light_position_x, 2.0f, 0.0f);
+
+			// If you want to treat them as always ON for shadows, keep isOn=true.
+			// Or you can add some condition to skip them if you want.
+		}
+		else
+		{
+			// This is one of the "physical" lights in world_->GetLights()
+			int physicalIndex = i - Config::light_count;
+
+			// Safety check: skip if out of range
+			if (physicalIndex >= static_cast<int>(physicalLights.size()))
+				break;
+
+			auto& lightPtr = physicalLights[physicalIndex];
+			lightPos = lightPtr->GetPosition();
+			isOn = lightPtr->IsOn();  // skip rendering shadows if off
+		}
+
+		// 2) Skip shadow pass if not ON
+		if (!isOn)
+			continue;
+
+		// 3) Build the view & final matrix
+		glm::mat4 lightView = glm::lookAt(
+			lightPos,
+			glm::vec3(0.0f, 0.0f, 0.0f), // e.g. looking at origin or center
+			glm::vec3(0.0f, 1.0f, 0.0f)
+		);
+		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+
+		// 4) Store it in our array, so we can pass it to main shader
+		lightSpaceMatrices_[i] = lightSpaceMatrix;
+
+		// 5) Use the depthShader to render depth into environment_->depthMap[i]
+		depthShader->Bind();
+		depthShader->SetMat4(lightSpaceMatrix, "lightSpaceMatrix");
+
+		glViewport(0, 0, Config::shadow_width, Config::shadow_height);
+		glBindFramebuffer(GL_FRAMEBUFFER, environment_->depthMapFBO[i]);
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+		// Draw the scene from this light's POV
+		world_->Draw(depthShader);
+
+		// unbind
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	}
+
+	// Finally, restore your window viewport
+	glViewport(0, 0, window_->GetWidth(), window_->GetHeight());
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void App::HandleState()

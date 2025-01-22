@@ -25,6 +25,7 @@ private:
 	void OnUpdate();
 	void OnResize() const;
 	void Load();
+	void RenderShadowMap();
 	void HandleState();
 
 	std::unique_ptr<Window> window_ = nullptr;
@@ -37,13 +38,18 @@ private:
 	std::array<bool, 10> lightOn_{ true, true, true, true, true, true, true, true, true, true };
 	std::shared_ptr<Shader> main_shader_ = nullptr;
 	std::shared_ptr<Shader> background_shader_ = nullptr;
-	std::shared_ptr<Shader> gui_shader_ = nullptr; 
+	std::shared_ptr<Shader> gui_shader_ = nullptr;
 
 	// Add CueBallMap member
 	std::shared_ptr<CueBallMap> cue_ball_map_ = nullptr;
 
+	// Add depth shader
+	std::shared_ptr<Shader> depthShader = nullptr;
 
-	bool in_menu_{true};
-	double delta_time_ = 0.0f;	
+	// For each of the up to 14 lights
+	std::array<glm::mat4, Config::max_shader_lights> lightSpaceMatrices_;
+
+	bool in_menu_{ true };
+	double delta_time_ = 0.0f;
 	double last_frame_ = 0.0f;
 };
