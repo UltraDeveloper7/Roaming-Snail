@@ -123,7 +123,7 @@ Billiards/
 ```
 
 ## Dependencies
-- **Wavefront OBJ loading with MTL**: The game supports loading `.obj` files, including material files with Physically Based Rendering (PBR) extensions. All `.obj` models were created using Blender.
+- **Wavefront OBJ loading with MTL**: The game supports loading `.obj` files, including material files with Physically Based Rendering (PBR) extensions. All `.obj` models were created using [Blender](https://www.blender.org/).
 - **PBR Point Lights**: Implements Physically Based Rendering (PBR) for point light sources, offering realistic lighting effects.
 - **IBL using HDR Irradiance Map and GGX Microfacet Model**: Uses Image-Based Lighting (IBL) with HDR maps for realistic reflections and lighting.
 - **Multiple Texture Maps per Material**: Supports multiple textures for each material, such as diffuse, specular, and normal maps.
