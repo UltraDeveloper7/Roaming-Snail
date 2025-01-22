@@ -1,7 +1,5 @@
 # Billiards
 
-Here is an updated README structure for the Billiards repository based on the provided logic:
-
 ## Overview
 This repository contains the source code for a dual-player Billiards game created with OpenGL in Visual Studio. The game allows two players to compete in a realistic billiards environment.
 
@@ -73,7 +71,28 @@ To use the Billiards game, follow the instructions in the "Running the Game" sec
 ```
 Billiards/
 ├── README.md
-├── [other files and directories]
+├── assets/
+│   ├── fonts/         # Font files used in the project.
+│   ├── hdr/           # High Dynamic Range images for lighting.
+│   ├── models/        # 3D models used in the game.
+│   ├── textures/      # Texture files for materials and surfaces.
+├── src/
+│   ├── core/          # Core functionality like game engine systems.
+│   ├── glad/          # OpenGL library for rendering.
+│   ├── include/       # Header files for shared definitions.
+│   ├── interface/     # UI elements and interaction logic.
+│   ├── objects/       # Definitions for game objects like balls and tables.
+│   ├── shaders/       # Shader programs for rendering effects.
+│   ├── Config.hpp     # Configuration settings for the game.
+│   ├── Logger.hpp     # Logging utility for debugging.
+│   ├── main.cpp       # Entry point of the application.
+│   ├── stdafx.cpp     # Precompiled header source for faster compilation.
+│   ├── stdafx.h       # Precompiled header file for standard includes.
+├── x64/               # Compiled binaries for the 64-bit architecture.
+├── Billiards.sln      # Visual Studio solution file.
+├── Billiards.vcxproj  # Visual Studio project file.
+├── freetype.dll       # FreeType library for font rendering.
+├── log/               # Directory for log files (empty initially).
 ```
 
 ## Scripts
