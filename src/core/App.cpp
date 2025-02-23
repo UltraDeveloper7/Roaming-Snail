@@ -129,21 +129,19 @@ void App::OnUpdate()
 	text_renderer_->Render(menu_->GetTexts());
 	glDisable(GL_BLEND);
 
-	// Handle light toggling with numpad keys 0-9 using edge detection
 	static bool key_was_pressed[10] = { false };
-	GLFWwindow* window = window_->GetGLFWWindow();
-
+	GLFWwindow* w = window_->GetGLFWWindow();
 	for (int key = GLFW_KEY_0; key <= GLFW_KEY_9; ++key) {
 		int lightIndex = key - GLFW_KEY_0;
-		bool isPressed = (glfwGetKey(window, key) == GLFW_PRESS);
+		bool isPressed = (glfwGetKey(w, key) == GLFW_PRESS);
 
 		if (isPressed && !key_was_pressed[lightIndex]) {
-			// Key has just been pressed this frame
-			world_->ToggleLight(lightIndex);
+			if (world_) {
+				world_->ToggleLight(lightIndex);
+			}
 			key_was_pressed[lightIndex] = true;
 		}
 		else if (!isPressed && key_was_pressed[lightIndex]) {
-			// Key has been released
 			key_was_pressed[lightIndex] = false;
 		}
 	}

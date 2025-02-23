@@ -22,7 +22,7 @@ void Light::SetColor(const glm::vec3& color)
 void Light::Toggle()
 {
     is_on_ = !is_on_;
-    color_ = is_on_ ? glm::vec3(10.0f, 8.0f, 6.0f) : glm::vec3(0.0f, 0.0f, 0.0f);
+    color_ = is_on_ ? glm::vec3(15.0f, 12.0f, 8.0f) : glm::vec3(0.0f, 0.0f, 0.0f);
 }
 
 const glm::vec3& Light::GetPosition() const

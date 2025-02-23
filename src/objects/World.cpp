@@ -62,19 +62,18 @@ void World::InitializeLights() {
 
 	// Positions for the lights
 	std::array<glm::vec3, 10> lightPositions = {
-		// Long sides (z = ±bound_z)
+
 		glm::vec3(-bound_x * 0.66f, lightHeight,  bound_z + 0.1f), // Left front
 		glm::vec3(0.0f, lightHeight,  bound_z + 0.1f),             // Center front
 		glm::vec3(bound_x * 0.66f, lightHeight,  bound_z + 0.1f),  // Right front
-		glm::vec3(-bound_x * 0.66f, lightHeight, -bound_z - 0.1f), // Left back
-		glm::vec3(0.0f, lightHeight, -bound_z - 0.1f),             // Center back
-		glm::vec3(bound_x * 0.66f, lightHeight, -bound_z - 0.1f),  // Right back
-
-		// Short sides (x = ±bound_x)
-		glm::vec3(-bound_x - 0.1f, lightHeight,  bound_z * 0.5f),  // Left side front
-		glm::vec3(-bound_x - 0.1f, lightHeight, -bound_z * 0.5f),  // Left side back
 		glm::vec3(bound_x + 0.1f, lightHeight,  bound_z * 0.5f),   // Right side front
-		glm::vec3(bound_x + 0.1f, lightHeight, -bound_z * 0.5f)    // Right side back
+		glm::vec3(bound_x + 0.1f, lightHeight, -bound_z * 0.5f),   // Right side back
+		glm::vec3(bound_x * 0.66f, lightHeight, -bound_z - 0.1f),  // Right back
+		glm::vec3(0.0f, lightHeight, -bound_z - 0.1f),             // Center back
+		glm::vec3(-bound_x * 0.66f, lightHeight, -bound_z - 0.1f), // Left back
+		glm::vec3(-bound_x - 0.1f, lightHeight, -bound_z * 0.5f),  // Left side back
+		glm::vec3(-bound_x - 0.1f, lightHeight,  bound_z * 0.5f)  // Left side front
+
 
 	};
 
