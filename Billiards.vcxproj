@@ -104,6 +104,8 @@
     <None Include="src\shaders\Spriteshader.vertexshader" />
     <None Include="src\shaders\text.fragmentshader" />
     <None Include="src\shaders\text.vertexshader" />
+    <None Include="src\shaders\Depth.fragmentshader" />
+    <None Include="src\shaders\Depth.vertexshader" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
