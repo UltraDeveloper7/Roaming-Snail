@@ -14,6 +14,8 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
+
+  <!-- ===== Sources (.cpp) ===== -->
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
@@ -21,9 +23,13 @@
     <ClCompile Include="src\stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+
+    <!-- glad -->
     <ClCompile Include="src\glad\src\gl.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+
+    <!-- core -->
     <ClCompile Include="src\core\App.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -42,18 +48,21 @@
     <ClCompile Include="src\core\Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\objects\Ball.cpp">
+    <!-- moved from objects -> core -->
+    <ClCompile Include="src\core\Object.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\objects\Cue.cpp">
+    <ClCompile Include="src\core\World.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\objects\Object.cpp">
+    <ClCompile Include="src\core\Environment.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\objects\Table.cpp">
+    <ClCompile Include="src\core\Light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+
+    <!-- interface -->
     <ClCompile Include="src\interface\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -63,16 +72,21 @@
     <ClCompile Include="src\interface\TextRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\objects\World.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\objects\Environment.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\interface\Menu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\interface\Drawable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+
+    <!-- objects (remain) -->
+    <ClCompile Include="src\objects\Ball.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\objects\Cue.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\objects\Table.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\objects\CueBallMap.cpp">
@@ -81,10 +95,17 @@
     <ClCompile Include="src\objects\Ceiling.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\objects\Light.cpp">
+
+    <!-- gameplay (new) -->
+    <ClCompile Include="src\gameplay\GameRules.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gameplay\GameState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+
+  <!-- ===== Headers (.h/.hpp) ===== -->
   <ItemGroup>
     <ClInclude Include="src\stdafx.h">
       <Filter>Header Files</Filter>
@@ -92,6 +113,8 @@
     <ClInclude Include="src\Config.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+
+    <!-- core -->
     <ClInclude Include="src\core\App.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -113,18 +136,21 @@
     <ClInclude Include="src\core\Vertex.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\objects\Ball.hpp">
+    <!-- moved from objects -> core -->
+    <ClInclude Include="src\core\Object.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\objects\Cue.hpp">
+    <ClInclude Include="src\core\World.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\objects\Object.hpp">
+    <ClInclude Include="src\core\Environment.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\objects\Table.hpp">
+    <ClInclude Include="src\core\Light.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+
+    <!-- interface -->
     <ClInclude Include="src\interface\Camera.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -134,40 +160,56 @@
     <ClInclude Include="src\interface\TextRenderer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\objects\World.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\objects\Environment.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\interface\Menu.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\interface\Drawable.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+
+    <!-- glad headers -->
     <ClInclude Include="src\include\glad\gl.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\include\KHR\khrplatform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+
+    <!-- objects (remain) -->
+    <ClInclude Include="src\objects\Ball.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\objects\Cue.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\objects\Table.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="src\objects\CueBallMap.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\objects\Player.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Logger.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\objects\Ceiling.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\objects\Light.hpp">
+
+    <!-- gameplay (new) -->
+    <ClInclude Include="src\gameplay\GameRules.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gameplay\GameState.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gameplay\Player.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+
+    <!-- misc -->
+    <ClInclude Include="src\Logger.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+
+  <!-- ===== Shaders / None ===== -->
   <ItemGroup>
     <None Include="src\shaders\shader.fragmentshader" />
     <None Include="src\shaders\shader.vertexshader" />
