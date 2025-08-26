@@ -1,7 +1,7 @@
 #pragma once
 #include "../stdafx.h"
-#include "../objects/World.hpp"
-#include "../objects/Environment.hpp"
+#include "../core/World.hpp"
+#include "../core/Environment.hpp"
 #include "../interface/Camera.hpp"
 #include "../interface/Window.hpp"
 #include "../interface/TextRenderer.hpp"

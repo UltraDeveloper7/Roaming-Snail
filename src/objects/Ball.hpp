@@ -1,6 +1,6 @@
 #pragma once
 #include "../stdafx.h"
-#include "Object.hpp"
+#include "../core/Object.hpp"
 
 class Ball final : public Object
 {

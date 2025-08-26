@@ -1,6 +1,6 @@
 #include "../stdafx.h"
 #include "Camera.hpp"
-#include "../objects/World.hpp"
+#include "../core/World.hpp"
 
 void Camera::Init()
 {

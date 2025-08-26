@@ -19,16 +19,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\core\Environment.cpp" />
+    <ClCompile Include="src\core\Light.cpp" />
+    <ClCompile Include="src\core\Object.cpp" />
+    <ClCompile Include="src\core\World.cpp" />
+    <ClCompile Include="src\gameplay\GameRules.cpp" />
+    <ClCompile Include="src\gameplay\GameState.cpp" />
     <ClCompile Include="src\interface\Drawable.cpp" />
     <ClCompile Include="src\interface\Menu.cpp" />
     <ClCompile Include="src\objects\Ceiling.cpp" />
     <ClCompile Include="src\objects\CueBallMap.cpp" />
-    <ClCompile Include="src\objects\Environment.cpp">
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">src/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">src/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <ClCompile Include="src\objects\Light.cpp" />
-    <ClCompile Include="src\objects\World.cpp" />
     <ClCompile Include="src\interface\TextRenderer.cpp" />
     <ClCompile Include="src\glad\src\gl.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -43,7 +43,6 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\objects\Ball.cpp" />
     <ClCompile Include="src\objects\Cue.cpp" />
-    <ClCompile Include="src\objects\Object.cpp" />
     <ClCompile Include="src\objects\Table.cpp" />
     <ClCompile Include="src\stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -60,6 +59,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Config.hpp" />
+    <ClInclude Include="src\core\Environment.hpp" />
+    <ClInclude Include="src\core\Light.hpp" />
+    <ClInclude Include="src\core\Object.hpp" />
+    <ClInclude Include="src\core\World.hpp" />
+    <ClInclude Include="src\gameplay\GameRules.hpp" />
+    <ClInclude Include="src\gameplay\GameState.hpp" />
+    <ClInclude Include="src\gameplay\Player.hpp" />
     <ClInclude Include="src\include\glad\gl.h" />
     <ClInclude Include="src\include\KHR\khrplatform.h" />
     <ClInclude Include="src\interface\Drawable.hpp" />
@@ -67,16 +73,11 @@
     <ClInclude Include="src\Logger.hpp" />
     <ClInclude Include="src\objects\Ceiling.hpp" />
     <ClInclude Include="src\objects\CueBallMap.hpp" />
-    <ClInclude Include="src\objects\Environment.hpp" />
-    <ClInclude Include="src\objects\Light.hpp" />
-    <ClInclude Include="src\objects\Player.hpp" />
-    <ClInclude Include="src\objects\World.hpp" />
     <ClInclude Include="src\interface\TextRenderer.hpp" />
     <ClInclude Include="src\interface\Camera.hpp" />
     <ClInclude Include="src\interface\Window.hpp" />
     <ClInclude Include="src\objects\Ball.hpp" />
     <ClInclude Include="src\objects\Cue.hpp" />
-    <ClInclude Include="src\objects\Object.hpp" />
     <ClInclude Include="src\objects\Table.hpp" />
     <ClInclude Include="src\stdafx.h" />
     <ClInclude Include="src\core\App.hpp" />
@@ -96,6 +97,8 @@
     <None Include="src\shaders\cubemap.vertexshader" />
     <None Include="src\shaders\CueMap.fragmentshader" />
     <None Include="src\shaders\CueMap.vertexshader" />
+    <None Include="src\shaders\Depth.fragmentshader" />
+    <None Include="src\shaders\Depth.vertexshader" />
     <None Include="src\shaders\irradiance.fragmentshader" />
     <None Include="src\shaders\prefilter.fragmentshader" />
     <None Include="src\shaders\shader.fragmentshader" />

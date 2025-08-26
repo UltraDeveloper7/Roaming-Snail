@@ -1,6 +1,6 @@
 #pragma once
 #include "../stdafx.h"
-#include "Object.hpp"
+#include "../core/Object.hpp"
 #include "../interface/Camera.hpp"
 
 class CueBallMap : public Object {

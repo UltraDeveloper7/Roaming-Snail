@@ -1,7 +1,7 @@
 #pragma once
 #include "../stdafx.h"
 #include "../core/Shader.hpp"
-#include "../objects/Object.hpp"
+#include "../core/Object.hpp"
 #include "Logger.hpp"
 
 // Forward declaration

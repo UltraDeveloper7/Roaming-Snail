@@ -34,14 +34,14 @@ void Material::Bind(const std::shared_ptr<Shader>& shader) const
 	{
 		glActiveTexture(GL_TEXTURE7);
 		shader->SetBool(true, "material.hasAoMap");
-		roughness_texture->Bind();
+		ao_texture->Bind();
 	}
 
-	if (normal_texture)
+	if (metallic_texture)
 	{
 		glActiveTexture(GL_TEXTURE8);
 		shader->SetBool(true, "material.hasMetallicMap");
-		normal_texture->Bind();
+		metallic_texture->Bind();
 	}
 }
 

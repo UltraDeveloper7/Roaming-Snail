@@ -1,6 +1,6 @@
 #pragma once
 #include "../stdafx.h"
-#include "Object.hpp"
+#include "../core/Object.hpp"
 
 class Ceiling : public Object {
 public:
