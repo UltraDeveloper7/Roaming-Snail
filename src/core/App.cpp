@@ -104,17 +104,15 @@ void App::OnUpdate()
 	if (in_menu_)
 		menu_->Draw(world_ == nullptr);
 
-	menu_->AddText(0.0f, 0.95f, "FPS: " + std::to_string(static_cast<int>(1.0f / delta_time_)), 0.75f);
-
 	// Show current player
 	if (world_) {
 		const auto& players = world_->GetPlayers();
 		const auto& current_player = players[world_->GetCurrentPlayerIndex()];
-		menu_->AddText(0.0f, 0.9f, "Current Player: " + current_player.GetName(), 0.75f);
+		menu_->AddText(0.0f, 0.95f, "Current Player: " + current_player.GetName(), 0.75f);
 
 		// Show the shot clock
 		float clockSec = world_->GetShotClock();
-		menu_->AddText(0.0f, 0.85f, "Shot Clock: " + std::to_string((int)clockSec), 0.75f);
+		menu_->AddText(0.0f, 0.90f, "Shot Clock: " + std::to_string((int)clockSec), 0.75f);
 
 		//short message in the center 
 		const std::string msg = world_->GetMessage();
