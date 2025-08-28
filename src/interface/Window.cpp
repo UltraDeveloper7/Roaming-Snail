@@ -1,7 +1,6 @@
 #include "../stdafx.h"
 #include "Window.hpp"
 
-#include "stb_image.h"
 
 // Store last GLFW error in a thread-local so we can throw safely outside the callback
 namespace {
@@ -76,19 +75,21 @@ void Window::ResetResizedFlag()
     resized_ = false;
 }
 
-void Window::SetWindowIcon(const char* path)
+void Window::SetWin32WindowIconFromICO(const wchar_t* path)
 {
-    int w = 0, h = 0, channels = 0;
-    unsigned char* pixels = stbi_load(path, &w, &h, &channels, 4); // RGBA
-    if (!pixels) return;
+    if (!handle_) return;
 
-    GLFWimage img;
-    img.width = w;
-    img.height = h;
-    img.pixels = pixels;
+    HWND hwnd = glfwGetWin32Window(handle_);
+    if (!hwnd) return;
 
-    glfwSetWindowIcon(handle_, 1, &img);
-    stbi_image_free(pixels);
+    // load big (32x32) and small (16x16) icons from the same .ico
+    HICON hBig = (HICON)LoadImageW(nullptr, path, IMAGE_ICON, 32, 32, LR_LOADFROMFILE);
+    HICON hSml = (HICON)LoadImageW(nullptr, path, IMAGE_ICON, 16, 16, LR_LOADFROMFILE);
+
+    if (hBig) SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hBig);
+    if (hSml) SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hSml);
+
+    // optional: keep handles to destroy on shutdown, or let OS clean up at process end
 }
 
 // Convenience (optional)
@@ -153,8 +154,8 @@ void Window::createWindow()
         throwGlfwError("Failed to create GLFW window");
     }
 
-    // set runtime icon (ICO works; stb_image can read .ico)
-    SetWindowIcon("assets/icons/billiards.ico");
+    SetWin32WindowIconFromICO(L"assets\\icons\\billiards.ico");
+
 
     glfwMakeContextCurrent(handle_);
     glfwSwapInterval(1); // vsync on by default
