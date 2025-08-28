@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Drawable.hpp"
 #include <tinyxml2.h>
 #include <tiny_obj_loader.h>

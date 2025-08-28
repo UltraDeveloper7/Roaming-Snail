@@ -1,5 +1,5 @@
 #pragma once
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "../core/Object.hpp"
 
 class Ball final : public Object

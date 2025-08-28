@@ -1,5 +1,5 @@
 #pragma once
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Ball.hpp"
 
 class Table final : public Object

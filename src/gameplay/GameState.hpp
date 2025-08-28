@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Player.hpp"
 
 
@@ -9,7 +9,7 @@ class Ball; // fwd
 
 class GameState {
 public:
-	static constexpr float SHOT_CLOCK_MAX = 30.0f;
+	static constexpr float SHOT_CLOCK_MAX = 60.0f;
 
 
 	GameState();

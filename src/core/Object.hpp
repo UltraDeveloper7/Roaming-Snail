@@ -1,5 +1,5 @@
 #pragma once
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "../core/Material.hpp"
 #include "../core/Mesh.hpp"
 #include "../core/Shader.hpp"

@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Table.hpp"
 
 Table::Table() : Object(Config::table_path)

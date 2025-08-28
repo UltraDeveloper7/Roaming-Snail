@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "World.hpp"
 #include "../Config.hpp"
 #include "../interface/Camera.hpp"

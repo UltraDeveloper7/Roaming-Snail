@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "TextRenderer.hpp"
 
 TextRenderer::TextRenderer() : text_shader_(std::make_unique<Shader>(Config::text_vertex_path, Config::text_fragment_path)), vao_{}, vbo_{}

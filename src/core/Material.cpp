@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Material.hpp"
 
 void Material::Bind(const std::shared_ptr<Shader>& shader) const

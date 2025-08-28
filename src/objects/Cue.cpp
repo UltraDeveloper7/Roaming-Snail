@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Cue.hpp"
 
 Cue::Cue(std::shared_ptr<CueBallMap> cue_ball_map)

@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Environment.hpp"
 #include "../core/Loader.hpp"
 

@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Texture.hpp"
 
 Texture::Texture(unsigned char* image_data, const int width, const int height, const int channels) :

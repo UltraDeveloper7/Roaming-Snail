@@ -1,5 +1,5 @@
 #pragma once
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "../core/Object.hpp"
 #include "../interface/Camera.hpp"
 

@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "CueBallMap.hpp"
 #include "../core/Loader.hpp"
 

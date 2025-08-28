@@ -1,5 +1,5 @@
 #pragma once
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Menu.hpp"
 #include "../core/Shader.hpp"
 #include "../core/Texture.hpp"

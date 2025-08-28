@@ -1,5 +1,5 @@
 #pragma once
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Object.hpp"
 #include "../core/Material.hpp" 
 

@@ -1,4 +1,4 @@
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include "Shader.hpp"
 
 Shader::Shader(const std::string& vertex_path, const std::string& fragment_path, const std::string& geometry_path) : id_{}

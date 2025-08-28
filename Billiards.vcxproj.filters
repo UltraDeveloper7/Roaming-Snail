@@ -18,7 +18,7 @@
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\stdafx.cpp">
+    <ClCompile Include="src\precompiled.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <!-- glad -->
@@ -99,7 +99,7 @@
   </ItemGroup>
   <!-- ===== Headers (.h/.hpp) ===== -->
   <ItemGroup>
-    <ClInclude Include="src\stdafx.h">
+    <ClInclude Include="src\precompiled.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Config.hpp">

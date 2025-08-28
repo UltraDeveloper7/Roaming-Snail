@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include <string>
 #include <glm/vec3.hpp>
 

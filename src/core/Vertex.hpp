@@ -1,5 +1,5 @@
 #pragma once
-#include "../stdafx.h"
+#include "../precompiled.h"
 #include <glm/gtx/hash.hpp>
 
 struct Vertex
