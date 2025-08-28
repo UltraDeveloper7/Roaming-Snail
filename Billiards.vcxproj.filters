@@ -9,12 +9,10 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Shader Files">
+      <UniqueIdentifier>{2af3c373-c312-4986-84ba-42b74139d0fa}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
-
   <!-- ===== Sources (.cpp) ===== -->
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -23,12 +21,10 @@
     <ClCompile Include="src\stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-
     <!-- glad -->
     <ClCompile Include="src\glad\src\gl.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-
     <!-- core -->
     <ClCompile Include="src\core\App.cpp">
       <Filter>Source Files</Filter>
@@ -61,7 +57,6 @@
     <ClCompile Include="src\core\Light.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-
     <!-- interface -->
     <ClCompile Include="src\interface\Camera.cpp">
       <Filter>Source Files</Filter>
@@ -78,7 +73,6 @@
     <ClCompile Include="src\interface\Drawable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-
     <!-- objects (remain) -->
     <ClCompile Include="src\objects\Ball.cpp">
       <Filter>Source Files</Filter>
@@ -95,7 +89,6 @@
     <ClCompile Include="src\objects\Ceiling.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-
     <!-- gameplay (new) -->
     <ClCompile Include="src\gameplay\GameRules.cpp">
       <Filter>Source Files</Filter>
@@ -104,7 +97,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
-
   <!-- ===== Headers (.h/.hpp) ===== -->
   <ItemGroup>
     <ClInclude Include="src\stdafx.h">
@@ -113,7 +105,6 @@
     <ClInclude Include="src\Config.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-
     <!-- core -->
     <ClInclude Include="src\core\App.hpp">
       <Filter>Header Files</Filter>
@@ -149,7 +140,6 @@
     <ClInclude Include="src\core\Light.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-
     <!-- interface -->
     <ClInclude Include="src\interface\Camera.hpp">
       <Filter>Header Files</Filter>
@@ -166,7 +156,6 @@
     <ClInclude Include="src\interface\Drawable.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-
     <!-- glad headers -->
     <ClInclude Include="src\include\glad\gl.h">
       <Filter>Header Files</Filter>
@@ -174,7 +163,6 @@
     <ClInclude Include="src\include\KHR\khrplatform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-
     <!-- objects (remain) -->
     <ClInclude Include="src\objects\Ball.hpp">
       <Filter>Header Files</Filter>
@@ -191,7 +179,6 @@
     <ClInclude Include="src\objects\Ceiling.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-
     <!-- gameplay (new) -->
     <ClInclude Include="src\gameplay\GameRules.hpp">
       <Filter>Header Files</Filter>
@@ -202,32 +189,75 @@
     <ClInclude Include="src\gameplay\Player.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-
     <!-- misc -->
     <ClInclude Include="src\Logger.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
-
   <!-- ===== Shaders / None ===== -->
   <ItemGroup>
-    <None Include="src\shaders\shader.fragmentshader" />
-    <None Include="src\shaders\shader.vertexshader" />
-    <None Include="src\shaders\text.fragmentshader" />
-    <None Include="src\shaders\text.vertexshader" />
-    <None Include="src\shaders\background.fragmentshader" />
-    <None Include="src\shaders\background.vertexshader" />
-    <None Include="src\shaders\brdf.fragmentshader" />
-    <None Include="src\shaders\brdf.vertexshader" />
-    <None Include="src\shaders\cubemap.fragmentshader" />
-    <None Include="src\shaders\cubemap.vertexshader" />
-    <None Include="src\shaders\irradiance.fragmentshader" />
-    <None Include="src\shaders\prefilter.fragmentshader" />
-    <None Include="src\shaders\CueMap.vertexshader" />
-    <None Include="src\shaders\CueMap.fragmentshader" />
-    <None Include="src\shaders\Spriteshader.vertexshader" />
-    <None Include="src\shaders\Spriteshader.fragmentshader" />
-    <None Include="src\shaders\Depth.fragmentshader" />
-    <None Include="src\shaders\Depth.vertexshader" />
+    <None Include="src\shaders\background.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\text.vertexshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\text.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\Spriteshader.vertexshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\Spriteshader.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\shader.vertexshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\shader.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\irradiance.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\prefilter.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\Depth.vertexshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\Depth.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\CueMap.vertexshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\CueMap.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\cubemap.vertexshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\cubemap.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\brdf.vertexshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\brdf.fragmentshader">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="src\shaders\background.vertexshader">
+      <Filter>Shader Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="appicon.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\icons\billiards.ico" />
   </ItemGroup>
 </Project>

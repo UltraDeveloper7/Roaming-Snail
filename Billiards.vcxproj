@@ -58,6 +58,7 @@
     <ClCompile Include="src\core\Texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="resource.h" />
     <ClInclude Include="src\Config.hpp" />
     <ClInclude Include="src\core\Environment.hpp" />
     <ClInclude Include="src\core\Light.hpp" />
@@ -107,6 +108,12 @@
     <None Include="src\shaders\Spriteshader.vertexshader" />
     <None Include="src\shaders\text.fragmentshader" />
     <None Include="src\shaders\text.vertexshader" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="appicon.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\icons\billiards.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
