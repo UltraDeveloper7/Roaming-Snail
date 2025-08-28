@@ -3,53 +3,41 @@
 class Window
 {
 public:
-	Window();
-	~Window();
+    Window();
+    ~Window();
 
-	Window(const Window&) = delete;
-	Window(Window&&) = delete;
-	Window& operator= (const Window&) = delete;
-	Window& operator= (Window&&) = delete;
+    Window(const Window&) = delete;
+    Window& operator=(const Window&) = delete;
+    Window(Window&&) = delete;
+    Window& operator=(Window&&) = delete;
 
-	[[nodiscard]] bool ShouldClose() const
-	{
-		return glfwWindowShouldClose(window_);
-	}
-	void SetCloseFlag()
-	{
-		glfwSetWindowShouldClose(window_, 1);
-	}
-	[[nodiscard]] GLFWwindow* GetGLFWWindow() const
-	{
-		return window_;
-	}
-	[[nodiscard]] bool Resized() const
-	{
-		return framebuffer_resized_;
-	}
-	[[nodiscard]] int GetWidth() const
-	{
-		return width_;
-	}
-	[[nodiscard]] int GetHeight() const
-	{
-		return height_;
-	}
-	void ResetResizedFlag()
-	{
-		framebuffer_resized_ = false;
-	}
+    [[nodiscard]] bool ShouldClose() const;
+    void SetCloseFlag();
+    [[nodiscard]] GLFWwindow* GetGLFWWindow() const;
+    [[nodiscard]] bool Resized() const;
+    [[nodiscard]] int GetWidth() const;
+    [[nodiscard]] int GetHeight() const;
+    void ResetResizedFlag();
+
+    // (Optional helpers—safe to ignore; no breaking changes)
+    void MakeContextCurrent();
+    void SwapBuffers();
+    void SetVSync(bool on);
 
 private:
-	static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
-	[[noreturn]] static void ErrorCallback(int error, const char* description);
+    // GLFW callbacks (static C hooks) -> forward to 'this'
+    static void OnFramebufferResized(GLFWwindow* window, int width, int height);
+    static void OnError(int error, const char* description);
 
-	void Init();
+    // init stages
+    void initGlfw();
+    void createWindow();
+    void loadGL();
 
-	int width_{};
-	int height_{};
-	bool framebuffer_resized_ = false;
-
-	std::string window_name_{};
-	GLFWwindow* window_ = nullptr;
+    // state
+    int          width_ = 0;
+    int          height_ = 0;
+    bool         resized_ = false;
+    std::string  title_;
+    GLFWwindow* handle_ = nullptr;
 };

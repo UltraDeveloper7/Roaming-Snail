@@ -246,24 +246,21 @@ void CueBallMap::HandleMouseInput(GLFWwindow* window) {
 
 glm::vec2 CueBallMap::GetSpin() const
 {
-    // Offset from cue-ball center to the red dot
+    // Offset from cue-ball center to the red dot (in screen pixels, bottom-left origin)
     glm::vec2 offset = aim_position_ - cue_ball_center_;
 
-    // Invert the Y axis so that moving "up" in screen space
-    // corresponds to positive top spin in a typical billiard physics model.
-    offset.y = -offset.y;
-
-    // Now normalize so that striking at the edge of the cue ball ~ spin of ±1
+    //  - offset.y > 0 (dot above center)  => topspin   (spin.y > 0)
+    //  - offset.y < 0 (dot below center)  => backspin   (spin.y < 0)
+    //  - offset.x > 0 (dot right of center)=> right english (spin.x > 0)
+    //  - offset.x < 0 (dot left of center) => left english  (spin.x < 0)
     glm::vec2 spin = offset / cue_ball_radius_;
 
-    // Clamp spin range to [-1, 1] just as a safety measure
+    // Clamp to [-1,1] for stability
     spin.x = glm::clamp(spin.x, -1.0f, 1.0f);
     spin.y = glm::clamp(spin.y, -1.0f, 1.0f);
 
     return spin;
 }
-
-
 
 void CueBallMap::ResetAim() {
     aim_position_ = cue_ball_center_;

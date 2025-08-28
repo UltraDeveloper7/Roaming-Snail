@@ -50,6 +50,7 @@ private:
 	std::array<glm::mat4, Config::max_shader_lights> lightSpaceMatrices_;
 
 	bool in_menu_{ true };
+	bool has_started_ = false;
 	double delta_time_ = 0.0f;
 	double last_frame_ = 0.0f;
 };

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../stdafx.h"
 #include <string>
 #include <glm/vec3.hpp>
@@ -63,15 +63,16 @@ struct Config final
 	inline static constexpr int physical_light_count = 10; // New physical lights controlled with numpad
 	inline static constexpr int max_shader_lights = 14; // Maximum number of lights in the shader
 	//inline static constexpr const char* const hdr_path = "comfy_cafe_4k.hdr";
-	//inline static constexpr const char* const hdr_path = "billiard_hall_4k.hdr";
-	inline static constexpr const char* const hdr_path = "empty_play_room_4k.hdr";
+	inline static constexpr const char* const hdr_path = "billiard_hall_4k.hdr";
+	//inline static constexpr const char* const hdr_path = "empty_play_room_4k.hdr";
 	inline static constexpr int cube_map_size = 4096;
 	inline static constexpr int irradiance_scale = 128;
 	inline static constexpr int prefilter_scale = 1024;
 	inline static constexpr int max_mip_levels = 7;
 
 	// Font
-	inline static constexpr const char* const font_path = "Silvanowesterndemo-ALA2p.otf";
+	//inline static constexpr const char* const font_path = "CronusRound-KA6y.ttf";
+	inline static constexpr const char* const font_path = "PassagewayBold-YBgv.otf";
 	inline static constexpr unsigned default_font_size = 64;
 
 	// Physics
@@ -80,13 +81,26 @@ struct Config final
 	inline static float spin_damping = 0.95f;          // Damping for spin
 	inline static float spin_coefficient = 0.03f;     // Controls spin effect magnitude
 	inline static float ball_mass = 0.165f;   // ~165 g for a pool ball
+
+	// Spin → linear coupling
+	inline static float spin_longitudinal_accel = 9.5f;   // more authority for draw/follow
+	inline static float spin_lateral_accel = 1.7f;   // gentler curve
+
+	// Rails/rim
+	inline static float rail_longitudinal_keep = 0.92f;  // keep more top/back off the rail
+	inline static float rail_side_flip = 1.0f;
+	inline static float rail_throw_impulse = 0.08f;  // a bit subtler than before
+
 	inline static float ball_radius = 0.0286f;  // 28.6 mm radius
 	inline static float ball_restitution = 0.95f;    // elasticity in ball-ball collisions
 	inline static float cushion_restitution = 0.9f;     // elasticity for cushion bounces
-	inline static float table_friction = 0.2f;     // friction vs cloth
-	inline static float cushion_friction = 0.3f;     // friction on cushions
-	inline static float spin_transfer_coef = 0.4f;     // how strongly spin is transferred in collisions
-	inline static float linear_damping = 0.99f;    // "air" or "cloth" damping each frame
-	inline static float angular_damping = 0.99f;    // spin damping
-	inline static float max_angular_speed = 40.0f;    // rad/s from user spin
+
+	// Friction & damping
+	inline static float cushion_friction = 0.10f;  // was 0.3 (too grabby)
+	inline static float table_friction = 0.11f;  // only used in impact tangential exchange
+	inline static float linear_damping = 0.995f;  // now treated as "per-second": pow(0.99, dt*60)
+	inline static float angular_damping = 0.89f;  // spin lasts longer (per-second)
+
+	inline static float spin_transfer_coef = 0.3f;     // how strongly spin is transferred in collisions
+
 };

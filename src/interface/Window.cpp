@@ -1,55 +1,153 @@
 #include "../stdafx.h"
 #include "Window.hpp"
 
-Window::Window() : width_(Config::width), height_(Config::height), window_name_(Config::window_name)
+// Store last GLFW error in a thread-local so we can throw safely outside the callback
+namespace {
+    thread_local int         g_lastErrCode = 0;
+    thread_local std::string g_lastErrMsg;
+
+    // Small helper to throw with the last GLFW error (if any)
+    [[noreturn]] void throwGlfwError(const char* prefix)
+    {
+        std::string what = prefix ? std::string(prefix) + ": " : "";
+        if (!g_lastErrMsg.empty()) what += g_lastErrMsg;
+        else                       what += "Unknown GLFW error";
+        throw std::runtime_error(what);
+    }
+}
+
+Window::Window()
 {
-	Init();
+    width_ = Config::width;
+    height_ = Config::height;
+    title_ = Config::window_name;
+
+    initGlfw();
+    createWindow();
+    loadGL();
 }
 
 Window::~Window()
 {
-	glfwDestroyWindow(window_);
-	glfwTerminate();
+    if (handle_) {
+        glfwDestroyWindow(handle_);
+        handle_ = nullptr;
+    }
+    glfwTerminate();
 }
 
-void Window::FramebufferResizeCallback(GLFWwindow* window, const int width, const int height)
+// -----------------------------
+// Public API //
+// -----------------------------
+bool Window::ShouldClose() const
 {
-	const auto app_window = static_cast<Window*>(glfwGetWindowUserPointer(window));
-	app_window->framebuffer_resized_ = true;
-	app_window->width_ = width;
-	app_window->height_ = height;
+    return handle_ ? glfwWindowShouldClose(handle_) != 0 : true;
 }
 
-void Window::ErrorCallback(const int error, const char* description)
+void Window::SetCloseFlag()
 {
-	throw std::exception(description, error);
+    if (handle_) glfwSetWindowShouldClose(handle_, 1);
 }
 
-void Window::Init()
+GLFWwindow* Window::GetGLFWWindow() const
 {
-	if (!glfwInit())
-		[[unlikely]] throw std::exception("Failed to init GLFW");
+    return handle_;
+}
 
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-	glfwWindowHint(GLFW_SAMPLES, 4);
+bool Window::Resized() const
+{
+    return resized_;
+}
+
+int Window::GetWidth() const
+{
+    return width_;
+}
+
+int Window::GetHeight() const
+{
+    return height_;
+}
+
+void Window::ResetResizedFlag()
+{
+    resized_ = false;
+}
+
+// Convenience (optional)
+void Window::MakeContextCurrent()
+{
+    if (handle_) glfwMakeContextCurrent(handle_);
+}
+void Window::SwapBuffers()
+{
+    if (handle_) glfwSwapBuffers(handle_);
+}
+void Window::SetVSync(bool on)
+{
+    glfwSwapInterval(on ? 1 : 0);
+}
+
+// -----------------------------
+// Callbacks
+// -----------------------------
+void Window::OnError(int error, const char* description)
+{
+    g_lastErrCode = error;
+    g_lastErrMsg = description ? description : "";
+    // If you want to log the result: Logger::Log(std::string("[GLFW] ") + g_lastErrMsg);
+}
+
+void Window::OnFramebufferResized(GLFWwindow* window, int width, int height)
+{
+    if (auto* self = static_cast<Window*>(glfwGetWindowUserPointer(window))) {
+        self->width_ = width;
+        self->height_ = height;
+        self->resized_ = true;
+    }
+}
+
+// -----------------------------
+// Init stages
+// -----------------------------
+void Window::initGlfw()
+{
+    g_lastErrCode = 0;
+    g_lastErrMsg.clear();
+
+    glfwSetErrorCallback(&Window::OnError);
+
+    if (!glfwInit()) {
+        throwGlfwError("Failed to initialize GLFW");
+    }
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
 #ifdef _DEBUG
-	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
+}
 
-	glfwSetErrorCallback(ErrorCallback);
+void Window::createWindow()
+{
+    handle_ = glfwCreateWindow(width_, height_, title_.c_str(), nullptr, nullptr);
+    if (!handle_) {
+        throwGlfwError("Failed to create GLFW window");
+    }
 
-	window_ = glfwCreateWindow(width_, height_, window_name_.c_str(), nullptr, nullptr);
-	glfwMakeContextCurrent(window_);
+    glfwMakeContextCurrent(handle_);
+    glfwSwapInterval(1); // vsync on by default
 
-	if (!window_)
-		[[unlikely]] throw std::exception("Failed to create GLFW window");
+    // route callbacks to this instance
+    glfwSetWindowUserPointer(handle_, this);
+    glfwSetWindowSizeCallback(handle_, &Window::OnFramebufferResized);
+}
 
-	if (!gladLoadGL(glfwGetProcAddress)) 
-        [[unlikely]] throw std::exception("Failed to load GL");
-
-	glfwSwapInterval(1);
-
-	glfwSetWindowUserPointer(window_, this);
-	glfwSetWindowSizeCallback(window_, FramebufferResizeCallback);
+void Window::loadGL()
+{
+    // gladLoadGL returns a function pointer; we check success instead
+    if (!gladLoadGL(glfwGetProcAddress)) {
+        throw std::runtime_error("Failed to load OpenGL functions (gladLoadGL)");
+    }
 }

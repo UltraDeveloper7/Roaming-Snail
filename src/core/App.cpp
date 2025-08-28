@@ -102,17 +102,17 @@ void App::OnUpdate()
 	}
 
 	if (in_menu_)
-		menu_->Draw(world_ == nullptr);
+		menu_->Draw(world_ == nullptr, has_started_);
 
 	// Show current player
 	if (world_) {
 		const auto& players = world_->GetPlayers();
 		const auto& current_player = players[world_->GetCurrentPlayerIndex()];
-		menu_->AddText(0.0f, 0.95f, "Current Player: " + current_player.GetName(), 0.75f);
+		menu_->AddText(0.0f, 0.95f, "Current Player: " + current_player.GetName(), 0.6f);
 
 		// Show the shot clock
 		float clockSec = world_->GetShotClock();
-		menu_->AddText(0.0f, 0.90f, "Shot Clock: " + std::to_string((int)clockSec), 0.75f);
+		menu_->AddText(0.0f, 0.90f, "Shot Clock: " + std::to_string((int)clockSec), 0.6f);
 
 		//short message in the center 
 		const std::string msg = world_->GetMessage();
@@ -125,6 +125,28 @@ void App::OnUpdate()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	text_renderer_->Render(menu_->GetTexts());
+
+	// Handle menu clicks
+	if (in_menu_) {
+		if (menu_->ConsumePlayClicked()) {
+			in_menu_ = false;
+			glfwSetInputMode(window_->GetGLFWWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			if (!world_) {
+				Load();
+				has_started_ = true;            // mark that a game has started at least once
+				world_->ResetPlayerIndex();
+				last_frame_ = glfwGetTime();
+			}
+		}
+		if (menu_->ConsumeResetClicked() && world_) {
+			world_->Reset();
+			world_->ResetGame();
+		}
+		if (menu_->ConsumeExitClicked()) {
+			window_->SetCloseFlag();
+		}
+	}
+
 	glDisable(GL_BLEND);
 
 	static bool key_was_pressed[10] = { false };
@@ -282,83 +304,71 @@ void App::RenderShadowMap()
 void App::HandleState()
 {
 	GLFWwindow* window = window_->GetGLFWWindow();
-	const int selected = menu_->GetSelected();
 
-	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-	{
-		in_menu_ = true;
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	// --- Edge-trigger for ESC ---
+	static int prevEsc = GLFW_RELEASE;
+	const int escNow = glfwGetKey(window, GLFW_KEY_ESCAPE);
+	const bool escPressed = (escNow == GLFW_PRESS && prevEsc == GLFW_RELEASE);
+
+	// Ask the menu whether any modal is open (settings/help)
+	bool modalOpen = false;
+	if (menu_) {
+		// requires small getters in Menu.hpp (see below)
+		modalOpen = menu_->IsSettingsOpen() || menu_->IsHelpOpen();
 	}
 
-	if (selected == 0)
-	{
-		if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
-		{
-			in_menu_ = false;
-			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-			if (!world_) {
-				Load();
-				world_->ResetPlayerIndex(); // Ensure player index is reset when loading the game
-				// Reset the timing reference here to avoid large delta on first frame
-				last_frame_ = glfwGetTime();
-			}
+	// -------------------------------
+	// 1) In-game -> ESC opens the menu
+	// -------------------------------
+	if (!in_menu_) {
+		if (escPressed) {
+			in_menu_ = true;
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			prevEsc = escNow;
+			return;
 		}
 	}
-	else if (selected == 1)
-	{
-		menu_->DrawHelp();
-	}
-	else if (selected == 2)
-	{
-		if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && world_) {
-			world_->Reset();
-			world_->ResetGame();
-		}
-	}
-	else if (selected == 3)
-	{
-		menu_->AddText(0.6f, 0.4f, "Strike force: " + std::to_string(Config::power_coeff), 0.75f);
-
-		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-			Config::power_coeff -= 0.02f;
-		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-			Config::power_coeff += 0.02f;
-	}
-	else if (selected == 4)
-	{
-		menu_->AddText(0.6f, 0.3f, "Ball friction: " + std::to_string(1.0f / Config::velocity_multiplier), 0.75f);
-
-		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS && Config::velocity_multiplier < 1.0f)
-			Config::velocity_multiplier += 0.0001f;
-		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-			Config::velocity_multiplier -= 0.0001f;
-	}
-	else if (selected == 5)
-	{
-		if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
+	// --------------------------------------------
+	// 2) In menu and game NOT started and NO modal
+	//    -> ESC quits the application
+	// --------------------------------------------
+	else { // in_menu_ == true
+		if (!has_started_ && escPressed && !modalOpen) {
 			window_->SetCloseFlag();
+			prevEsc = escNow;
+			return;
+		}
+		// Note: when a modal is open, ESC is handled inside Menu.cpp to close it.
 	}
 
-	// Toggle camera view on mouse click
-	static int last_mouse_button_state = GLFW_RELEASE;
-	int mouse_button_state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+	// -------------------------------------------
+	// 3) Only handle camera toggle when NOT in menu
+	// -------------------------------------------
+	if (!in_menu_) {
+		static int last_mouse_button_state = GLFW_RELEASE;
+		const int mouse_button_state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
 
-	if (mouse_button_state == GLFW_PRESS && last_mouse_button_state == GLFW_RELEASE) {
-		bool isCueBallMapVisible = cue_ball_map_->IsVisible();
-		bool isCueBallMapWithinBounds = cue_ball_map_->IsWithinBounds();
-		if (camera_ && (!isCueBallMapVisible || !isCueBallMapWithinBounds)) {
-			bool top_down = camera_->IsTopDownView();
-			camera_->SetTopDownView(!top_down);
-			if (!top_down) {
-				// Enter top-down view
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-			}
-			else {
-				// Exit top-down view
-				glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		if (mouse_button_state == GLFW_PRESS && last_mouse_button_state == GLFW_RELEASE) {
+			const bool cueMapVisible = (cue_ball_map_ && cue_ball_map_->IsVisible());
+			const bool cueMapHit = (cue_ball_map_ && cue_ball_map_->IsWithinBounds());
+
+			if (!cueMapVisible || !cueMapHit) {
+				const bool newTopDown = !camera_->IsTopDownView();
+				camera_->SetTopDownView(newTopDown);
+
+				glfwSetInputMode(
+					window,
+					GLFW_CURSOR,
+					newTopDown ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED
+				);
 			}
 		}
+
+		last_mouse_button_state = mouse_button_state;
 	}
-	last_mouse_button_state = mouse_button_state;
+
+	// remember ESC for next frame
+	prevEsc = escNow;
 }
+
+

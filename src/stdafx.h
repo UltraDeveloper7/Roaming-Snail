@@ -31,6 +31,7 @@
 #include <format>
 #include <algorithm>
 #include <random>
+#include <functional>
 
 // Include mapbox/earcut.hpp
 #include <mapbox/earcut.hpp>
