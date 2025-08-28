@@ -255,9 +255,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="appicon.rc" />
+    <Image Include="assets\icons\billiards.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="assets\icons\billiards.ico" />
+    <ResourceCompile Include="appicon.rc" />
   </ItemGroup>
 </Project>

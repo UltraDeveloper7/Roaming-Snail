@@ -1,6 +1,8 @@
 #include "../stdafx.h"
 #include "Window.hpp"
 
+#include "stb_image.h"
+
 // Store last GLFW error in a thread-local so we can throw safely outside the callback
 namespace {
     thread_local int         g_lastErrCode = 0;
@@ -74,6 +76,21 @@ void Window::ResetResizedFlag()
     resized_ = false;
 }
 
+void Window::SetWindowIcon(const char* path)
+{
+    int w = 0, h = 0, channels = 0;
+    unsigned char* pixels = stbi_load(path, &w, &h, &channels, 4); // RGBA
+    if (!pixels) return;
+
+    GLFWimage img;
+    img.width = w;
+    img.height = h;
+    img.pixels = pixels;
+
+    glfwSetWindowIcon(handle_, 1, &img);
+    stbi_image_free(pixels);
+}
+
 // Convenience (optional)
 void Window::MakeContextCurrent()
 {
@@ -136,6 +153,9 @@ void Window::createWindow()
         throwGlfwError("Failed to create GLFW window");
     }
 
+    // set runtime icon (ICO works; stb_image can read .ico)
+    SetWindowIcon("assets/icons/billiards.ico");
+
     glfwMakeContextCurrent(handle_);
     glfwSwapInterval(1); // vsync on by default
 
@@ -151,3 +171,4 @@ void Window::loadGL()
         throw std::runtime_error("Failed to load OpenGL functions (gladLoadGL)");
     }
 }
+

@@ -110,10 +110,10 @@
     <None Include="src\shaders\text.vertexshader" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="appicon.rc" />
+    <Image Include="assets\icons\billiards.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="assets\icons\billiards.ico" />
+    <ResourceCompile Include="appicon.rc" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -193,7 +193,7 @@ if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 
 REM --- copy shaders (adjust the source folder if yours is different) ---
 REM If your shaders are at project root, change $(ProjectDir)src\shaders to $(ProjectDir)
-robocopy "$(ProjectDir)src\shaders" "$(TargetDir)shaders" *.vertexshader *.fragmentshader /NFL /NDL /NJH /NJS
+robocopy "$(ProjectDir)src\shaders" "$(TargetDir)src\shaders" *.vertexshader *.fragmentshader /E /NFL /NDL /NJH /NJS
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 
 REM --- runtime DLLs (copy only if they exist) ---
@@ -235,7 +235,7 @@ if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 
 REM --- copy shaders (adjust the source folder if yours is different) ---
 REM If your shaders are at project root, change $(ProjectDir)src\shaders to $(ProjectDir)
-robocopy "$(ProjectDir)src\shaders" "$(TargetDir)shaders" *.vertexshader *.fragmentshader /NFL /NDL /NJH /NJS
+robocopy "$(ProjectDir)src\shaders" "$(TargetDir)src\shaders" *.vertexshader *.fragmentshader /E /NFL /NDL /NJH /NJS
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 
 REM --- runtime DLLs (copy only if they exist) ---
@@ -274,7 +274,7 @@ if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 
 REM --- copy shaders (adjust the source folder if yours is different) ---
 REM If your shaders are at project root, change $(ProjectDir)src\shaders to $(ProjectDir)
-robocopy "$(ProjectDir)src\shaders" "$(TargetDir)shaders" *.vertexshader *.fragmentshader /NFL /NDL /NJH /NJS
+robocopy "$(ProjectDir)src\shaders" "$(TargetDir)src\shaders" *.vertexshader *.fragmentshader /E /NFL /NDL /NJH /NJS
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 
 REM --- runtime DLLs (copy only if they exist) ---
@@ -317,7 +317,7 @@ if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 
 REM --- copy shaders (adjust the source folder if yours is different) ---
 REM If your shaders are at project root, change $(ProjectDir)src\shaders to $(ProjectDir)
-robocopy "$(ProjectDir)src\shaders" "$(TargetDir)shaders" *.vertexshader *.fragmentshader /NFL /NDL /NJH /NJS
+robocopy "$(ProjectDir)src\shaders" "$(TargetDir)src\shaders" *.vertexshader *.fragmentshader /E /NFL /NDL /NJH /NJS
 if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
 
 REM --- runtime DLLs (copy only if they exist) ---

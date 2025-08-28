@@ -2,6 +2,7 @@
 // Microsoft Visual C++ generated include file.
 // Used by Billiards.rc
 //
+#pragma once
 #define IDI_ICON1                       101
 #define IDI_APPICON                     101
 

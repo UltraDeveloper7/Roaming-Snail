@@ -23,6 +23,7 @@ public:
     void MakeContextCurrent();
     void SwapBuffers();
     void SetVSync(bool on);
+    void SetWindowIcon(const char* path); // accepts .ico or .png
 
 private:
     // GLFW callbacks (static C hooks) -> forward to 'this'
