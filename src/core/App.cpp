@@ -14,7 +14,7 @@ App::App() :
 	cue_ball_map_(std::make_shared<CueBallMap>(*camera_, window_->GetGLFWWindow())),
 	lightSpaceMatrices_{}
 {
-	Logger::Init("log.txt");
+	//Logger::Init("log.txt");
 	text_renderer_->Init();
 	camera_->Init();
 }

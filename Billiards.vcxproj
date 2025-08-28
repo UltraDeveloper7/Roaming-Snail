@@ -183,6 +183,27 @@
       <AdditionalDependencies>$(SolutionDir)src\include\GLFW\lib-vc2022\glfw3.lib;$(SolutionDir)src\include\freetype\libs\freetype.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\wikto\source\Billiards\src\include\freetype\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>@echo off
+setlocal
+
+REM --- copy the whole assets tree next to the EXE ---
+robocopy "$(ProjectDir)assets" "$(TargetDir)assets" /E /NFL /NDL /NJH /NJS /NC /NS
+if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+
+REM --- copy shaders (adjust the source folder if yours is different) ---
+REM If your shaders are at project root, change $(ProjectDir)src\shaders to $(ProjectDir)
+robocopy "$(ProjectDir)src\shaders" "$(TargetDir)shaders" *.vertexshader *.fragmentshader /NFL /NDL /NJH /NJS
+if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+
+REM --- runtime DLLs (copy only if they exist) ---
+if exist "$(ProjectDir)freetype.dll" copy /Y "$(ProjectDir)freetype.dll" "$(TargetDir)" &gt;nul
+if exist "$(ProjectDir)src\include\GLFW\lib-vc2022\glfw3.dll" copy /Y "$(ProjectDir)src\include\GLFW\lib-vc2022\glfw3.dll" "$(TargetDir)" &gt;nul
+
+endlocal
+exit /b 0
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -204,6 +225,27 @@
       <AdditionalDependencies>$(SolutionDir)src\include\GLFW\lib-vc2022\glfw3.lib;$(SolutionDir)src\include\freetype\libs\freetype.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\wikto\source\Billiards\src\include\freetype\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>@echo off
+setlocal
+
+REM --- copy the whole assets tree next to the EXE ---
+robocopy "$(ProjectDir)assets" "$(TargetDir)assets" /E /NFL /NDL /NJH /NJS /NC /NS
+if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+
+REM --- copy shaders (adjust the source folder if yours is different) ---
+REM If your shaders are at project root, change $(ProjectDir)src\shaders to $(ProjectDir)
+robocopy "$(ProjectDir)src\shaders" "$(TargetDir)shaders" *.vertexshader *.fragmentshader /NFL /NDL /NJH /NJS
+if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+
+REM --- runtime DLLs (copy only if they exist) ---
+if exist "$(ProjectDir)freetype.dll" copy /Y "$(ProjectDir)freetype.dll" "$(TargetDir)" &gt;nul
+if exist "$(ProjectDir)src\include\GLFW\lib-vc2022\glfw3.dll" copy /Y "$(ProjectDir)src\include\GLFW\lib-vc2022\glfw3.dll" "$(TargetDir)" &gt;nul
+
+endlocal
+exit /b 0
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -222,6 +264,27 @@
       <AdditionalDependencies>$(SolutionDir)src\include\GLFW\lib-vc2022\glfw3.lib;$(SolutionDir)src\include\freetype\libs\freetype.lib;$(CoreLibraryDependencies);$(SolutionDir)src\include\tinyxml2\tinyxml2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\wikto\source\Billiards\src\include\freetype\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>@echo off
+setlocal
+
+REM --- copy the whole assets tree next to the EXE ---
+robocopy "$(ProjectDir)assets" "$(TargetDir)assets" /E /NFL /NDL /NJH /NJS /NC /NS
+if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+
+REM --- copy shaders (adjust the source folder if yours is different) ---
+REM If your shaders are at project root, change $(ProjectDir)src\shaders to $(ProjectDir)
+robocopy "$(ProjectDir)src\shaders" "$(TargetDir)shaders" *.vertexshader *.fragmentshader /NFL /NDL /NJH /NJS
+if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+
+REM --- runtime DLLs (copy only if they exist) ---
+if exist "$(ProjectDir)freetype.dll" copy /Y "$(ProjectDir)freetype.dll" "$(TargetDir)" &gt;nul
+if exist "$(ProjectDir)src\include\GLFW\lib-vc2022\glfw3.dll" copy /Y "$(ProjectDir)src\include\GLFW\lib-vc2022\glfw3.dll" "$(TargetDir)" &gt;nul
+
+endlocal
+exit /b 0
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -244,6 +307,27 @@
       <AdditionalDependencies>$(SolutionDir)src\include\GLFW\lib-vc2022\glfw3.lib;$(SolutionDir)src\include\freetype\libs\freetype.lib;$(CoreLibraryDependencies);$(SolutionDir)src\include\tinyxml2\tinyxml2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\wikto\source\Billiards\src\include\freetype\libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
+    <PostBuildEvent>
+      <Command>@echo off
+setlocal
+
+REM --- copy the whole assets tree next to the EXE ---
+robocopy "$(ProjectDir)assets" "$(TargetDir)assets" /E /NFL /NDL /NJH /NJS /NC /NS
+if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+
+REM --- copy shaders (adjust the source folder if yours is different) ---
+REM If your shaders are at project root, change $(ProjectDir)src\shaders to $(ProjectDir)
+robocopy "$(ProjectDir)src\shaders" "$(TargetDir)shaders" *.vertexshader *.fragmentshader /NFL /NDL /NJH /NJS
+if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+
+REM --- runtime DLLs (copy only if they exist) ---
+if exist "$(ProjectDir)freetype.dll" copy /Y "$(ProjectDir)freetype.dll" "$(TargetDir)" &gt;nul
+if exist "$(ProjectDir)src\include\GLFW\lib-vc2022\glfw3.dll" copy /Y "$(ProjectDir)src\include\GLFW\lib-vc2022\glfw3.dll" "$(TargetDir)" &gt;nul
+
+endlocal
+exit /b 0
+</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
