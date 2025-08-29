@@ -86,7 +86,7 @@ void Environment::CreateShadowMapsForAllLights()
         glTexImage2D(
             GL_TEXTURE_2D,
             0,
-            GL_DEPTH_COMPONENT,
+            GL_DEPTH_COMPONENT24,
             Config::shadow_width,
             Config::shadow_height,
             0,

@@ -117,6 +117,13 @@ void Shader::SetInt(const int n, const std::string& name) const
 	glUniform1i(my_loc, n);
 }
 
+void Shader::SetIntArray(const char* name, const int* values, int count)
+{
+	GLint loc = glGetUniformLocation(id_, name);
+	if (loc != -1)
+		glUniform1iv(loc, count, values);
+}
+
 void Shader::SetBool(const bool c, const std::string& name) const
 {
 	const auto my_loc = glGetUniformLocation(id_, name.c_str());

@@ -32,6 +32,7 @@ namespace {
 Menu::Menu(const int width, const int height) : width_(width), height_(height) {
     // no initial selection → nothing is red until hover/arrow keys
     selected_ = -1;
+    last_mouse_ = GLFW_RELEASE;
 }
 
 void Menu::Update(const int width, const int height) { width_ = width; height_ = height; }
@@ -84,11 +85,8 @@ bool Menu::button(float u, float v, const std::string& label, float scale,
     // draw
     AddText(u, v, label, scale, align, emphasize || hover);
 
-    // click edge
-    GLFWwindow* wWin = glfwGetCurrentContext();
-    int btn = glfwGetMouseButton(wWin, GLFW_MOUSE_BUTTON_LEFT);
-    bool clicked = hover && (btn == GLFW_PRESS) && (last_mouse_ == GLFW_RELEASE);
-    last_mouse_ = btn;
+    // CLICK: use frame-wide edge
+    bool clicked = hover && mouse_edge_down_;
 
     if (out_w) *out_w = (x1 - x0);
     if (out_h) *out_h = (y1 - y0);
@@ -105,8 +103,14 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     const float mouseX = static_cast<float>(mx);
     const float mouseY = static_cast<float>(winH - my);
 
+    mouse_x_ = mouseX;
+    mouse_y_ = mouseY;
+
     static int prevMouse = GLFW_RELEASE;
     const int curMouse = glfwGetMouseButton(w, GLFW_MOUSE_BUTTON_LEFT);
+
+    // one-frame “pressed” edge
+    mouse_edge_down_ = (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
 
     static int prevEnter = GLFW_RELEASE;
     const int curEnter = glfwGetKey(w, GLFW_KEY_ENTER);
@@ -148,7 +152,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
             const bool hover = (mouseX >= x0 && mouseX <= x1 && mouseY >= y0 && mouseY <= y1);
             AddText(u, v, label, scale, align, emphasize || hover || isSelected);
 
-            const bool clicked = hover && (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
+            const bool clicked = hover && mouse_edge_down_;
             return clicked;
         };
 

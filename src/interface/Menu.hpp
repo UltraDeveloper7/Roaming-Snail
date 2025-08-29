@@ -80,4 +80,5 @@ private:
 	bool play_clicked_{ false };
 	bool exit_clicked_{ false };
 	bool reset_clicked_{ false };
+	bool mouse_edge_down_ = false;
 };

@@ -12,6 +12,7 @@ public:
 	void SetMat4(const glm::mat4& m, const std::string& name) const;
 	void SetFloat(float s, const std::string& name) const;
 	void SetInt(int n, const std::string& name) const;
+	void SetIntArray(const char* name, const int* values, int count);
 	void SetBool(bool c, const std::string& name) const;
 
 	// Add a public getter for id_

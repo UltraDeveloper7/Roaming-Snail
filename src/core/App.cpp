@@ -60,26 +60,32 @@ void App::OnUpdate()
 		// 1) Render all the shadow maps
 		RenderShadowMap();
 
-		// (2) Bind each shadow map & pass lightSpaceMatrix
+		// (2) Bind each shadow map & pass lightSpaceMatrix (array upload)
 		main_shader_->Bind();
 
-		// total_lights is again the sum of virtual + physical
+		// how many lights we actually use this frame
 		int total_lights = Config::light_count + (int)world_->GetLights().size();
 		int finalLightCount = std::min(total_lights, Config::max_shader_lights);
 
-		for (int i = 0; i < Config::max_shader_lights; i++)
+		// tell the shader the count
+		main_shader_->SetInt(finalLightCount, "lightCount");
+
+		// bind depth textures to TU 9.. and gather the units we used
+		int units[Config::max_shader_lights];
+		for (int i = 0; i < finalLightCount; ++i)
 		{
-			// 2a) Bind shadowMap[i]
 			glActiveTexture(GL_TEXTURE0 + 9 + i);
 			glBindTexture(GL_TEXTURE_2D, environment_->depthMap[i]);
+			units[i] = 9 + i;
 
-			std::string uniformName = "shadowMap[" + std::to_string(i) + "]";
-			main_shader_->SetInt(9 + i, uniformName.c_str());
-
-			// 2b) Upload lightSpaceMatrix[i]
+			// upload the matching light-space matrix
 			std::string matName = "lightSpaceMatrix[" + std::to_string(i) + "]";
 			main_shader_->SetMat4(lightSpaceMatrices_[i], matName.c_str());
 		}
+
+		// set the WHOLE sampler array in one call (critical for some drivers)
+		main_shader_->SetIntArray("shadowMap[0]", units, finalLightCount);
+
 		main_shader_->Unbind();
 		//-----------------------------------------------//
 
@@ -219,12 +225,9 @@ void App::Load()
 void App::RenderShadowMap()
 {
 	// We'll produce an orthographic projection for each shadow:
-	glm::mat4 lightProjection = glm::ortho(
-		-20.0f, 20.0f,
-		-20.0f, 20.0f,
-		Config::near_plane,
-		Config::far_plane
-	);
+	const float S = Config::shadow_extent;
+	glm::mat4 lightProjection = glm::ortho(-S, S, -S, S, Config::near_plane, Config::far_plane);
+
 
 	// We have 3 “virtual” (non‐physical) lights + however many physical are in World
 	// total_lights = 3 + e.g. 10 => up to 13

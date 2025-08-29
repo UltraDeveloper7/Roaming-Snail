@@ -13,8 +13,9 @@ struct Config final
 	inline static constexpr const char* const window_name = "Billiards";
 
 	// Shadow
-	inline static constexpr int shadow_width = 1920;
-	inline static constexpr int shadow_height = 1920;
+	inline static constexpr int shadow_width = 2048;
+	inline static constexpr int shadow_height = 2048;
+	inline static constexpr float shadow_extent = 8.0f;
 	inline static constexpr float near_plane = 1.0f;
 	inline static constexpr float far_plane = 20.0f;
 
