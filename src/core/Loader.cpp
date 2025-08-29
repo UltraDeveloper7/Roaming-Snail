@@ -3,6 +3,26 @@
 
 #include <stb_image.h>
 
+
+// -----------------------------
+// small file-local helpers
+// -----------------------------
+namespace {
+	[[noreturn]] void throwf(const std::string& msg, const std::string& path) {
+		throw std::exception((msg + ": " + path).c_str());
+	}
+
+	// normalize a relative path key for the cache (keeps your original key as given)
+	std::string normalizeKey(const std::string& rel) {
+		return rel;
+	}
+} 
+
+
+// ============================================================================
+// Model loading (OBJ via tinyobj)
+// ============================================================================
+
 void Loader::LoadModel(const std::string& path, std::vector<std::shared_ptr<Mesh>>& meshes, std::vector<std::shared_ptr<Material>>& materials)
 {
 	tinyobj::ObjReaderConfig reader_config;
@@ -13,8 +33,9 @@ void Loader::LoadModel(const std::string& path, std::vector<std::shared_ptr<Mesh
 
 	tinyobj::ObjReader reader;
 
-	if (!reader.ParseFromFile(model_path.string(), reader_config))
-		[[unlikely]] throw std::exception(std::string("Failed to load model " + path).c_str());
+	if (!reader.ParseFromFile(model_path.string(), reader_config)) {
+		throwf("Failed to load model", path);
+	}
 
 	auto& temp_materials = reader.GetMaterials();
 	auto& temp_attrib = reader.GetAttrib();
@@ -27,6 +48,9 @@ void Loader::LoadModel(const std::string& path, std::vector<std::shared_ptr<Mesh
 	LoadMeshes(meshes, temp_shapes, temp_attrib);
 }
 
+// ============================================================================
+// Textures (8-bit + HDR)
+// ============================================================================
 std::shared_ptr<Texture> Loader::LoadTexture(const std::string& path)
 {
 	if (path.empty())
@@ -38,10 +62,14 @@ std::shared_ptr<Texture> Loader::LoadTexture(const std::string& path)
 	int channels, width, height;
 	const auto image_path = std::filesystem::current_path() / "assets/textures" / path;
 
-	if (!stbi_info(image_path.string().c_str(), &width, &height, &channels))
-		[[unlikely]] throw std::exception(std::string(path + " cannot be found or loaded as an image").c_str());
+	if (!stbi_info(image_path.string().c_str(), &width, &height, &channels)) {
+		throwf("Image cannot be found or decoded", path);
+	}
 
 	unsigned char* image_data = stbi_load(image_path.string().c_str(), &width, &height, &channels, 0);
+	if (!image_data) {
+		throwf("stbi_load failed for image", path);
+	}
 
 	const auto texture = std::make_shared<Texture>(image_data, width, height, channels);
 
@@ -58,12 +86,16 @@ std::shared_ptr<Texture> Loader::LoadEnvironment(const std::string& path)
 
 	stbi_set_flip_vertically_on_load(true);
 
-	if (!stbi_info(image_path.string().c_str(), &width, &height, &channels))
-		[[unlikely]] throw std::exception(std::string(path + " cannot be found or loaded as an HDR image").c_str());
+	if (!stbi_info(image_path.string().c_str(), &width, &height, &channels)) {
+		throwf("HDR cannot be found or decoded", path);
+	}
 
 	float* hdr_data = stbi_loadf(image_path.string().c_str(), &width, &height, &channels, 3);
 
 	stbi_set_flip_vertically_on_load(false);
+	if (!hdr_data) {
+		throwf("stbi_loadf failed for HDR image", path);
+	}
 
 	const auto texture = std::make_shared<Texture>(hdr_data, width, height);
 
@@ -72,6 +104,9 @@ std::shared_ptr<Texture> Loader::LoadEnvironment(const std::string& path)
 	return texture;
 }
 
+// ============================================================================
+// Materials & Meshes (private helpers)
+// ============================================================================
 void Loader::LoadMaterials(std::vector<std::shared_ptr<Material>>& materials, const std::vector<tinyobj::material_t>& temp_materials)
 {
 	for (const auto& material : temp_materials)
@@ -96,11 +131,17 @@ void Loader::LoadMaterials(std::vector<std::shared_ptr<Material>>& materials, co
 
 void Loader::LoadMeshes(std::vector<std::shared_ptr<Mesh>>& meshes, const std::vector<tinyobj::shape_t>& temp_shapes, const tinyobj::attrib_t& temp_attrib)
 {
-	std::unordered_map<Vertex, uint32_t> unique_vertices;
+	meshes.reserve(temp_shapes.size());
+	
 	for (const auto& shape : temp_shapes)
 	{
+		std::unordered_map<Vertex, uint32_t> unique_vertices;
+		unique_vertices.reserve(shape.mesh.indices.size());
+
 		std::vector<Vertex> vertices{};
 		std::vector<unsigned> indices{};
+		vertices.reserve(shape.mesh.indices.size());
+		indices.reserve(shape.mesh.indices.size());
 
 		size_t index_offset = 0;
 		for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++)
@@ -150,6 +191,10 @@ void Loader::LoadMeshes(std::vector<std::shared_ptr<Mesh>>& meshes, const std::v
 	}
 }
 
+
+// ============================================================================
+// Convenience wrappers 
+// ============================================================================
 std::vector<std::shared_ptr<Material>> Loader::GetMaterials(const std::string& modelPath)
 {
 	std::vector<std::shared_ptr<Material>> materials;
