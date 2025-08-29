@@ -1,6 +1,12 @@
 #include "../precompiled.h"
 #include "Cue.hpp"
 
+namespace {
+	// tiny helpers to keep intent clear
+	inline glm::vec3 dirFromAngle(float a) { return { std::sin(a), 0.0f, std::cos(a) }; }
+	inline glm::vec3 rotAxisFromAngle(float a) { return { std::cos(a) * 0.1f, 1.0f, -std::sin(a) * 0.1f }; }
+}
+
 Cue::Cue(std::shared_ptr<CueBallMap> cue_ball_map)
 	: Object(Config::cue_path), cue_ball_map_(cue_ball_map)
 {
@@ -8,58 +14,64 @@ Cue::Cue(std::shared_ptr<CueBallMap> cue_ball_map)
 
 void Cue::HandleShot(const std::shared_ptr<Ball>& white_ball, const float dt)
 {
-	const auto window = glfwGetCurrentContext();
-	const auto cue_direction = glm::vec3(sin(angle_), 0.0f, cos(angle_));
-	const auto cue_rotation_axis = glm::vec3(cos(angle_) * 0.1f, 1.0f, -sin(angle_) * 0.1f);
-	const auto cue_displacement = glm::cross(cue_direction, cue_rotation_axis);
+    GLFWwindow* window = glfwGetCurrentContext();
 
-	constexpr auto up = glm::vec3(0.0f, 1.0f, 0.0f);
-	const auto power_vector = glm::cross(cue_direction, up);
-	auto power = glm::distance(translation_, white_ball->translation_);
+    // Precompute vectors used in multiple branches
+    const glm::vec3 cue_dir = dirFromAngle(angle_);               // forward along cue
+    const glm::vec3 cue_rot_axis = rotAxisFromAngle(angle_);           // tilt axis for small arc
+    const glm::vec3 cue_displace = glm::cross(cue_dir, cue_rot_axis);  // local sideways for pull/push
+    const glm::vec3 up = { 0.0f, 1.0f, 0.0f };
+    const glm::vec3 power_vec = glm::cross(cue_dir, up);            // points from cue tip into cue ball
 
-	if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-	{
-		if (!power_changed_)
-		{
-			Rotate(cue_rotation_axis, dt);
-			Translate(dt * Ball::radius_ * cue_direction);
-		}
-	}
+    // Distance from cue to white ball drives power
+    float power = glm::distance(translation_, white_ball->translation_);
 
-	if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-	{
-		if (!power_changed_)
-		{
-			Rotate(cue_rotation_axis, -dt);
-			Translate(-dt * Ball::radius_ * cue_direction);
-		}
-	}
+    // Read keys once
+    const bool kLeft = glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS;
+    const bool kRight = glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS;
+    const bool kUp = glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS;
+    const bool kDown = glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS;
+    const bool kSpace = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 
-	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-	{
-		if (power > Ball::radius_)
-		{
-			Translate(-cue_displacement * dt);
-			power_changed_ = true;
-		}
-	}
+    // Rotate cue around the ball (left/right) — only when we haven't changed power this frame
+    if (!power_changed_) {
+        if (kLeft) {
+            Rotate(cue_rot_axis, dt);
+            Translate(dt * Ball::radius_ * cue_dir);
+        }
+        if (kRight) {
+            Rotate(cue_rot_axis, -dt);
+            Translate(-dt * Ball::radius_ * cue_dir);
+        }
+    }
 
-	if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-	{
-		if (power <= 0.5f)
-		{
-			Translate(cue_displacement * dt);
-			power_changed_ = true;
-		}
-	}
+    // Adjust "pulled back" amount which affects shot power (up/down)
+    // Keep the exact thresholds from original code.
+    if (kUp) {
+        if (power > Ball::radius_) {
+            Translate(-cue_displace * dt);
+            power_changed_ = true;
+        }
+    }
 
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
-	{
-		power *= Config::power_coeff;
-		glm::vec2 spin = cue_ball_map_->GetSpin(); 
-		white_ball->Shot(-power_vector * power, spin);
-		power_changed_ = false;
-	}
+    if (kDown) {
+        if (power <= 0.5f) {
+            Translate(cue_displace * dt);
+            power_changed_ = true;
+        }
+    }
+
+    // Fire!
+    if (kSpace) {
+        const float shot_power = power * Config::power_coeff;
+        const glm::vec2 spin = cue_ball_map_ ? cue_ball_map_->GetSpin() : glm::vec2(0.0f);
+
+        // Direction is the same as before (negative power_vec)
+        white_ball->Shot(-power_vec * shot_power, spin);
+
+        // Reset so next left/right rotation is allowed without needing a new power adjust
+        power_changed_ = false;
+    }
 }
 
 void Cue::PlaceAtBall(const std::shared_ptr<Ball>& ball)

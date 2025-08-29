@@ -7,8 +7,8 @@ static_assert(offsetof(Vertex, position) == 0, "Vertex.position must be at offse
 
 
 Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned>& indices, const int material_id) : vao_{}, ebo_{}, vbo_{},
-	vertex_count_(vertices.size()),
-	index_count_(indices.size()),
+	vertex_count_(static_cast<GLsizei>(vertices.size())), 
+	index_count_(static_cast<GLsizei>(indices.size())),
 	material_id_(material_id)
 {
 	// Create VAO first: it will capture VBO/EBO bindings & attrib setup.
