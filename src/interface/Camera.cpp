@@ -69,7 +69,7 @@ void Camera::UpdateMain(const std::shared_ptr<Shader>& main_shader, const World&
 	}
 
 	// 3. Set `lightCount` to the correct number
-	int total_lights = Config::light_count + lights.size();
+	int total_lights = Config::light_count + static_cast<int>(lights.size());
 	if (total_lights > max_shader_lights) {
 		Logger::Log("Warning: Total light count exceeds shader capacity! Truncating to " + std::to_string(max_shader_lights));
 		total_lights = max_shader_lights;

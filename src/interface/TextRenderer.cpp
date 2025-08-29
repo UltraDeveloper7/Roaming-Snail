@@ -1,4 +1,4 @@
-#include "../precompiled.h"
+﻿#include "../precompiled.h"
 #include "TextRenderer.hpp"
 
 TextRenderer::TextRenderer() : text_shader_(std::make_unique<Shader>(Config::text_vertex_path, Config::text_fragment_path)), vao_{}, vbo_{}
@@ -36,44 +36,65 @@ void TextRenderer::Update() const
 
 void TextRenderer::Render(std::vector<Text>& texts)
 {
-	text_shader_->Bind();
 
+	text_shader_->Bind();
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(vao_);
 
 	for (auto& [position_x, position_y, text, scale, alignment, selected] : texts)
 	{
-		text_shader_->SetVec3(selected ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(1.0f), "textColor");
+		// pick color (red when selected, white otherwise)
+		glm::vec3 color = selected ? glm::vec3(1.0f, 0.0f, 0.0f)
+			: glm::vec3(1.0f);
+		text_shader_->SetVec3(color, "textColor");
 
-		const glm::vec2 temp_scale = font_scale_;
+		const glm::vec2 saved_scale = font_scale_;
 		font_scale_ *= scale;
 
-		if (alignment == Alignment::CENTER)
-			position_x -= CalculateTextWidth(text) / 2.0f;
-		else if (alignment == Alignment::RIGHT)
-			position_x -= CalculateTextWidth(text);
+		// alignment in pixels
+		float width_px = CalculateTextWidth(text); // uses current font_scale_
+		if (alignment == Alignment::CENTER)       position_x -= width_px * 0.5f;
+		else if (alignment == Alignment::RIGHT)   position_x -= width_px;
 
-		for (const auto c : text)
+		// optional drop shadow (draw first, slightly offset)
+		if (draw_shadow_) {
+			glm::vec3 shadow = shadow_color_;
+			// push a darker color; your text shader uses only RGB (alpha via texture)
+			text_shader_->SetVec3(shadow, "textColor");
+
+			float sx = position_x + shadow_px_.x;
+			float sy = position_y + shadow_px_.y;
+			for (unsigned char c : std::string_view(text)) {
+				RenderCharacter(sx, sy, c);
+			}
+			// restore text color
+			text_shader_->SetVec3(color, "textColor");
+		}
+
+		// main pass
+		for (unsigned char c : std::string_view(text)) {
 			RenderCharacter(position_x, position_y, c);
+		}
 
-		font_scale_ = temp_scale;
+		font_scale_ = saved_scale;
 	}
 
 	texts.clear();
 
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
+
 }
 
-void TextRenderer::RenderCharacter(float& x, float& y, const char character)
+void TextRenderer::RenderCharacter(float& x, float& y, const unsigned char ch)
 {
-	const Character& ch = characters_[character];
+	const Character& chd = characters_.at(ch); // throws if missing → easy to spot bad glyphs
 
-	const float position_x = x + ch.bearing.x * font_scale_.x;
-	const float position_y = y - (ch.size.y - ch.bearing.y) * font_scale_.y;
+	const float position_x = x + chd.bearing.x * font_scale_.x;
+	const float position_y = y - (chd.size.y - chd.bearing.y) * font_scale_.y;
 
-	const float w = ch.size.x * font_scale_.x;
-	const float h = ch.size.y * font_scale_.y;
+	const float w = chd.size.x * font_scale_.x;
+	const float h = chd.size.y * font_scale_.y;
 
 	const float vertices[6][4] =
 	{
@@ -86,28 +107,28 @@ void TextRenderer::RenderCharacter(float& x, float& y, const char character)
 		{ position_x + w, position_y + h,   1.0f, 0.0f }
 	};
 
-	if (ch.texture)
-		ch.texture->Bind();
+	if (chd.texture) chd.texture->Bind();
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof vertices, vertices);
-
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
-	x += (ch.advance >> 6) * font_scale_.x;
+	x += (chd.advance >> 6) * font_scale_.x;
 }
 
 float TextRenderer::CalculateTextWidth(const std::string& text)
 {
-	float width{};
-
-	for (const auto& c : text)
-		width += (characters_[c].advance >> 6) * font_scale_.x;
-
+	float width = 0.0f;
+	for (unsigned char c : std::string_view(text)) {
+		auto it = characters_.find(c);
+		if (it != characters_.end())
+			width += (it->second.advance >> 6) * font_scale_.x;
+	}
 	return width;
 }
+
 
 void TextRenderer::Load()
 {
@@ -126,6 +147,7 @@ void TextRenderer::Load()
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
+	// load first 96 ASCII characters
 	for (int i = 32; i < 128; i++)
 	{
 		if (FT_Load_Char(face, i, FT_LOAD_RENDER))

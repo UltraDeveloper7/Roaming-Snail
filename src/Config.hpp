@@ -97,7 +97,7 @@ struct Config final
 	inline static float cushion_restitution = 0.9f;     // elasticity for cushion bounces
 
 	// Friction & damping
-	inline static float cushion_friction = 0.10f;  // was 0.3 (too grabby)
+	inline static float cushion_friction = 0.10f;  
 	inline static float table_friction = 0.11f;  // only used in impact tangential exchange
 	inline static float linear_damping = 0.995f;  // now treated as "per-second": pow(0.99, dt*60)
 	inline static float angular_damping = 0.89f;  // spin lasts longer (per-second)

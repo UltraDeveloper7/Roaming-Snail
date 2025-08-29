@@ -22,7 +22,7 @@ public:
 	void Render(std::vector<Text>& texts);
 
 private:
-	void RenderCharacter(float& x, float& y, char character);
+	void RenderCharacter(float& x, float& y, unsigned char character);
 	float CalculateTextWidth(const std::string& text);
 	void Load();
 
@@ -32,4 +32,11 @@ private:
 	unsigned vao_, vbo_;
 	glm::vec2 font_scale_{ 1.0f };
 	glm::mat4 projection_matrix_{};
+
+	// --- styling ---
+	bool      draw_shadow_ = true;
+	glm::vec2 shadow_px_ = { 3.0f, -3.0f };    // offset in pixels (y is up)
+	glm::vec3 shadow_color_ = { 0.0f, 0.0f, 0.0f };
+	float     shadow_alpha_ = 0.7f;
 };
+

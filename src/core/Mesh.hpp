@@ -16,14 +16,22 @@ public:
 	void Bind() const;
 	void Unbind() const;
 	void Draw() const;
-	void Clear() const;
+	void Clear();
 	[[nodiscard]] int GetMaterialId() const { return material_id_; }
 
 private:
-	unsigned vao_;
-	unsigned ebo_;
-	unsigned vbo_;
-	size_t vertex_count_;
-	size_t index_count_;
-	int material_id_;
+    // GL objects
+    GLuint vao_ = 0;
+    GLuint vbo_ = 0;
+    GLuint ebo_ = 0;
+
+    // counts
+    GLsizei vertex_count_  = 0;   // number of vertices
+    GLsizei index_count_   = 0;   // number of indices
+
+    // meta
+    int material_id_ = 0;
+
+    // helpers
+    void setupVertexFormat() const;
 };

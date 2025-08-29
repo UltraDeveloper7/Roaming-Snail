@@ -49,6 +49,9 @@ void App::OnUpdate()
 	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	// make sure depth testing is ON before drawing the 3D scene
+	glEnable(GL_DEPTH_TEST);
+
 	if (world_)
 	{
 		camera_->UpdateViewMatrix(static_cast<float>(delta_time_));
@@ -110,6 +113,11 @@ void App::OnUpdate()
 	if (in_menu_)
 		menu_->Draw(world_ == nullptr, has_started_);
 
+	// ---- text UI pass ----
+	// draw text without depth, then restore it immediately
+	GLboolean depthWasEnabled = glIsEnabled(GL_DEPTH_TEST);
+	glDisable(GL_DEPTH_TEST);
+
 	// Show current player
 	if (world_) {
 		const auto& players = world_->GetPlayers();
@@ -154,6 +162,8 @@ void App::OnUpdate()
 	}
 
 	glDisable(GL_BLEND);
+
+	if (depthWasEnabled) glEnable(GL_DEPTH_TEST);   // restore for next frame
 
 	static bool key_was_pressed[10] = { false };
 	GLFWwindow* w = window_->GetGLFWWindow();
