@@ -1,4 +1,4 @@
-#include "../precompiled.h"
+﻿#include "../precompiled.h"
 #include "World.hpp"
 #include "../Config.hpp"
 #include "../interface/Camera.hpp"
@@ -8,7 +8,7 @@
 
 /**
  * Intersect the ray with plane y=0, which is the top mesh of your table.
- * The ball�s center must ultimately be at y=Ball::radius_, so we'll do that after.
+ * The ball’s center must ultimately be at y=Ball::radius_, so we'll do that after.
  */
 static std::pair<bool, glm::vec3> RayIntersectTablePlane(const glm::vec3& rayOrigin,
 	const glm::vec3& rayDir)
@@ -258,22 +258,29 @@ void World::HandleBallsCollision(const int number)
 }
 
 
-void World::HandleHolesFall(const int number) const
+void World::HandleHolesFall(const int number) 
 {
 	if (!AreBallsInMotion()) {
-		if (number == 0) { balls_[number]->SetDrawn(false); return; }
-		balls_[number]->SetDrawn(false); return;
-	}
-	balls_[number]->HandleGravity(Table::hole_bottom_);
+		// pocket the ball
+		balls_[number]->SetDrawn(false);
 
+		// if it’s the cue ball (index 0) → foul + Ball in Hand
+		if (number == 0) {
+			state_.SetBallInHand(true);
+			state_.SetMessage("Foul! Scratch — ball in hand.", 1.2f);
+			// (we don’t switch turns here; end-of-shot logic will do it)
+		}
+		return;
+	}
+
+	// still moving → keep the existing sink animation/physics
+	balls_[number]->HandleGravity(Table::hole_bottom_);
 
 	const auto p2 = glm::vec2(balls_[number]->translation_.x, balls_[number]->translation_.z);
 	const auto h2 = glm::vec2(balls_[number]->GetHole().x, balls_[number]->GetHole().z);
 
-
 	const glm::vec2 dir = glm::normalize(p2 - h2);
 	const float distance = glm::distance(p2, h2);
-
 
 	if (distance > Table::hole_radius_ - Ball::radius_)
 		balls_[number]->BounceOffHole(-dir, Table::hole_radius_);
