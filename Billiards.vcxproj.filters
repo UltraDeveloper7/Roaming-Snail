@@ -70,9 +70,6 @@
     <ClCompile Include="src\interface\Menu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\interface\Drawable.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <!-- objects (remain) -->
     <ClCompile Include="src\objects\Ball.cpp">
       <Filter>Source Files</Filter>
@@ -151,9 +148,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\interface\Menu.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\interface\Drawable.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <!-- glad headers -->

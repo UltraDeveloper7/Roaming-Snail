@@ -25,7 +25,6 @@
     <ClCompile Include="src\core\World.cpp" />
     <ClCompile Include="src\gameplay\GameRules.cpp" />
     <ClCompile Include="src\gameplay\GameState.cpp" />
-    <ClCompile Include="src\interface\Drawable.cpp" />
     <ClCompile Include="src\interface\Menu.cpp" />
     <ClCompile Include="src\objects\Ceiling.cpp" />
     <ClCompile Include="src\objects\CueBallMap.cpp" />
@@ -69,7 +68,6 @@
     <ClInclude Include="src\gameplay\Player.hpp" />
     <ClInclude Include="src\include\glad\gl.h" />
     <ClInclude Include="src\include\KHR\khrplatform.h" />
-    <ClInclude Include="src\interface\Drawable.hpp" />
     <ClInclude Include="src\interface\Menu.hpp" />
     <ClInclude Include="src\Logger.hpp" />
     <ClInclude Include="src\objects\Ceiling.hpp" />
