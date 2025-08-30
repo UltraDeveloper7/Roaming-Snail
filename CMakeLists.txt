@@ -1,24 +1,19 @@
 cmake_minimum_required(VERSION 3.24)
 project(Billiards LANGUAGES CXX)
 
-# ---- Visual Studio: show only your project at the top ------------------------
-# Put CMake's predefined targets (ALL_BUILD, ZERO_CHECK, INSTALL) under "CMake"
+# --- VS: keep utility targets out of the way
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "~CMake")
-set_target_properties(Billiards PROPERTIES FOLDER "")
 set(CMAKE_SUPPRESS_REGENERATION ON)
 
-# (Optional) reduce regen noise in VS
-set(CMAKE_SUPPRESS_REGENERATION ON)
-
-# ---- C++ & MSVC runtime ------------------------------------------------------
+# --- C++ & MSVC runtime
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif()
 
-# ---- Sources -----------------------------------------------------------------
+# --- Sources
 file(GLOB_RECURSE BILLIARDS_SRC CONFIGURE_DEPENDS
   "${CMAKE_SOURCE_DIR}/src/*.cpp"
   "${CMAKE_SOURCE_DIR}/src/*.c"
@@ -30,23 +25,20 @@ if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/appicon.rc")
 endif()
 
 add_executable(Billiards ${BILLIARDS_SRC})
-# Keep your target at the solution root (not under a folder)
-set_target_properties(Billiards PROPERTIES FOLDER "")
-
 source_group(TREE "${CMAKE_SOURCE_DIR}" FILES ${BILLIARDS_SRC})
 
-# Exe output + run from exe dir in Visual Studio
+# --- Properties for the *existing* target (must be AFTER add_executable)
 set_target_properties(Billiards PROPERTIES
+  FOLDER ""                                   # keep at solution root
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
   VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:Billiards>"
 )
-
 target_include_directories(Billiards PRIVATE "${CMAKE_SOURCE_DIR}/src")
 
 # Opt-in to GLM experimental extensions if you use them
 target_compile_definitions(Billiards PRIVATE GLM_ENABLE_EXPERIMENTAL)
 
-# ---- Dependencies via vcpkg (manifest mode) ---------------------------------
+# --- Deps via vcpkg
 find_package(OpenGL REQUIRED)
 find_package(glfw3          CONFIG REQUIRED)
 find_package(glad           CONFIG REQUIRED)
@@ -55,7 +47,7 @@ find_package(tinyxml2       CONFIG REQUIRED)
 find_package(glm            CONFIG REQUIRED)
 find_package(tinyobjloader  CONFIG REQUIRED)
 
-# stb (header-only)
+# stb (header-only). You can also: find_package(Stb REQUIRED)
 find_path(STB_INCLUDE_DIR "stb_image.h"
   PATHS
     "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}"
@@ -64,7 +56,7 @@ find_path(STB_INCLUDE_DIR "stb_image.h"
   PATH_SUFFIXES include
 )
 if(NOT STB_INCLUDE_DIR)
-  message(FATAL_ERROR "stb_image.h not found. Ensure 'stb' is in vcpkg.json and vcpkg toolchain is active.")
+  message(FATAL_ERROR "stb_image.h not found. Ensure 'stb' is in vcpkg.json and the vcpkg toolchain is active.")
 endif()
 target_include_directories(Billiards PRIVATE "${STB_INCLUDE_DIR}")
 
@@ -108,8 +100,7 @@ if(WIN32)
   target_link_libraries(Billiards PRIVATE user32 gdi32 shell32)
 endif()
 
-# ---- Resources: list + copy shaders -----------------------------------------
-# Add shaders to project (not compiled) and keep them under src/shaders in VS
+# --- Resources: add + copy shaders
 file(GLOB_RECURSE SHADER_FILES "${CMAKE_SOURCE_DIR}/src/shaders/*")
 if(SHADER_FILES)
   target_sources(Billiards PRIVATE ${SHADER_FILES})
@@ -119,7 +110,6 @@ if(SHADER_FILES)
   source_group(TREE "${CMAKE_SOURCE_DIR}" FILES ${SHADER_FILES})
 endif()
 
-# Copy assets and shaders next to the executable
 add_custom_command(TARGET Billiards POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           "${CMAKE_SOURCE_DIR}/assets"
@@ -129,7 +119,3 @@ add_custom_command(TARGET Billiards POST_BUILD
           "$<TARGET_FILE_DIR:Billiards>/src/shaders"
   COMMENT "Copying assets/ and src/shaders/ next to the executable"
 )
-
-# ---- No install() rules -> no INSTALL target in the solution -----------------
-# (If you need 'cmake --install', re-add install() commands and they will appear
-# under the 'CMake' folder thanks to PREDEFINED_TARGETS_FOLDER.)
