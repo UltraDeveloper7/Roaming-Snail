@@ -134,23 +134,32 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
         if (selected_ >= static_cast<int>(items.size())) selected_ = 0;
     }
 
+    // Button helper with micro-animation: slight scale-up on hover/selection
     auto drawButton = [&](float u, float v, const std::string& label, float scale,
         Alignment align, bool emphasize, bool isSelected) -> bool
         {
             const float px = u * winW;
             const float py = v * winH;
-            const float wpx = estimateWidthPx(label, scale);
-            const float hpx = estimateHeightPx(scale);
+
+            // scale up when hovered/selected
+            // (keep math consistent by using the same scale for measuring and drawing)
+            float localScale = scale;
+
+            // rect based on *base* scale
+            const float baseW = estimateWidthPx(label, scale);
+            const float baseH = estimateHeightPx(scale);
 
             float x0, x1;
-            if (align == Alignment::CENTER) { x0 = px - wpx * 0.5f; x1 = px + wpx * 0.5f; }
-            else if (align == Alignment::RIGHT) { x0 = px - wpx; x1 = px; }
-            else { x0 = px; x1 = px + wpx; }
-            const float y0 = py - hpx * 0.5f;
-            const float y1 = py + hpx * 0.5f;
+            if (align == Alignment::CENTER) { x0 = px - baseW * 0.5f; x1 = px + baseW * 0.5f; }
+            else if (align == Alignment::RIGHT) { x0 = px - baseW; x1 = px; }
+            else { x0 = px; x1 = px + baseW; }
+            const float y0 = py - baseH * 0.5f;
+            const float y1 = py + baseH * 0.5f;
 
             const bool hover = (mouseX >= x0 && mouseX <= x1 && mouseY >= y0 && mouseY <= y1);
-            AddText(u, v, label, scale, align, emphasize || hover || isSelected);
+            if (hover || isSelected) localScale *= 1.05f;  // micro-animation
+
+            AddText(u, v, label, localScale, align, emphasize || hover || isSelected);
 
             const bool clicked = hover && mouse_edge_down_;
             return clicked;
@@ -172,16 +181,16 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
         // Play
         const bool playSelected = (selected_ == 0);
         const bool playClicked = !modalOpen && (
-            drawButton(0.5f, 0.70f, "Play game", 1.05f, Alignment::CENTER, false, playSelected) || isEnterOn(0)
+            drawButton(0.5f, 0.70f, "Play", 1.05f, Alignment::CENTER, false, playSelected) || isEnterOn(0)
             );
         if (playClicked) play_clicked_ = true;
 
-        // Initial conditions (with > / v symbol)
+        // Quick Setup (with > / v symbol)
         if (!settings_open_) {
             const bool condSelected = (selected_ == 1);
             const char* dd = settings_open_ ? "v" : ">";
             const bool condClicked = !modalOpen && drawButton(
-                0.10f, 0.18f, std::string(dd) + "  Initial conditions", 0.85f,
+                0.10f, 0.18f, std::string(dd) + "  Quick Setup", 0.85f,
                 Alignment::LEFT, false, condSelected);
             if (condClicked || isEnterOn(1)) {
                 settings_open_ = true;
@@ -189,11 +198,11 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
             }
         }
 
-        // Help (with [i] symbol)
+        // How to Play (with [i] symbol)
         if (!help_open_) {
             const bool helpSelected = (selected_ == 2);
             const bool helpClicked = !modalOpen && drawButton(
-                0.10f, 0.10f, "[i] Help", 0.90f,
+                0.10f, 0.10f, "[i] How to Play", 0.90f,
                 Alignment::LEFT, false, helpSelected);
             if (helpClicked || isEnterOn(2)) {
                 help_open_ = true;
@@ -224,18 +233,18 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
                 reset_clicked_ = true;
             }
 
-            // 2) Initial conditions (show > or v accordingly)
+            // 2) Quick Setup (show > or v accordingly)
             const bool condSelected = (selected_ == 2);
             const char* dd = settings_open_ ? "v" : ">";
-            if (drawButton(0.5f, startV - 1 * stepV, std::string(dd) + "  Initial conditions", 0.90f,
+            if (drawButton(0.5f, startV - 1 * stepV, std::string(dd) + "  Quick Setup", 0.90f,
                 Alignment::CENTER, false, condSelected) || isEnterOn(2)) {
                 settings_open_ = true;
                 selected_ = 2;
             }
 
-            // 3) Help (with [i] symbol)
+            // 3) How to Play
             const bool helpSelected = (selected_ == 3);
-            if (drawButton(0.5f, startV - 2 * stepV, "[i] Help", 0.90f,
+            if (drawButton(0.5f, startV - 2 * stepV, "[i] How to Play", 0.90f,
                 Alignment::CENTER, false, helpSelected) || isEnterOn(3)) {
                 help_open_ = true;
                 selected_ = 3;
@@ -251,7 +260,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     }
 
     // =========================
-    //  Modal: Initial conditions (RIGHT)
+    //  Modal: Quick Setup (RIGHT)
     //  — while open, every other entry is disabled/hidden
     // =========================
     if (settings_open_) {
@@ -264,7 +273,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
         const float closeV = 0.43f;
 
         // Header shows the DOWN arrow symbol to indicate open state
-        AddText(panelU, headV, "Initial conditions  v", 0.9f, Alignment::LEFT, true);
+        AddText(panelU, headV, "Quick Setup  v", 0.9f, Alignment::LEFT, true);
 
         const float lineScale = 0.8f;
 
@@ -334,11 +343,11 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     }
 
     // =========================
-    //  Modal: HELP (CENTER)
+    //  Modal:  How to Play (CENTER)
     // =========================
     if (help_open_) {
         // Header shows the [i] symbol as requested
-        AddText(0.5f, 0.62f, "[i] Help", 1.1f, Alignment::CENTER, true);
+        AddText(0.5f, 0.62f, "[i] How to Play", 1.1f, Alignment::CENTER, true);
 
         RenderHelpBlock(*this,
             /*u*/0.5f,

@@ -62,8 +62,11 @@ void TextRenderer::Render(std::vector<Text>& texts)
 			// push a darker color; your text shader uses only RGB (alpha via texture)
 			text_shader_->SetVec3(shadow, "textColor");
 
-			float sx = position_x + shadow_px_.x;
-			float sy = position_y + shadow_px_.y;
+			// lift the shadow a tad when selected/hovered
+			const glm::vec2 lift = selected ? glm::vec2(3.0f, -3.0f) : shadow_px_;
+
+			float sx = position_x + lift.x;
+			float sy = position_y + lift.y;
 			for (unsigned char c : std::string_view(text)) {
 				RenderCharacter(sx, sy, c);
 			}
