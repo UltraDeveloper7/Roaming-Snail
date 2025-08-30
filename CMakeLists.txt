@@ -1,6 +1,16 @@
 cmake_minimum_required(VERSION 3.24)
 project(Billiards LANGUAGES CXX)
 
+# ---- Visual Studio: show only your project at the top ------------------------
+# Put CMake's predefined targets (ALL_BUILD, ZERO_CHECK, INSTALL) under "CMake"
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "~CMake")
+set_target_properties(Billiards PROPERTIES FOLDER "")
+set(CMAKE_SUPPRESS_REGENERATION ON)
+
+# (Optional) reduce regen noise in VS
+set(CMAKE_SUPPRESS_REGENERATION ON)
+
 # ---- C++ & MSVC runtime ------------------------------------------------------
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,6 +30,9 @@ if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/appicon.rc")
 endif()
 
 add_executable(Billiards ${BILLIARDS_SRC})
+# Keep your target at the solution root (not under a folder)
+set_target_properties(Billiards PROPERTIES FOLDER "")
+
 source_group(TREE "${CMAKE_SOURCE_DIR}" FILES ${BILLIARDS_SRC})
 
 # Exe output + run from exe dir in Visual Studio
@@ -106,9 +119,7 @@ if(SHADER_FILES)
   source_group(TREE "${CMAKE_SOURCE_DIR}" FILES ${SHADER_FILES})
 endif()
 
-# Copy assets and shaders to the locations your app expects:
-#   <exe dir>/assets
-#   <exe dir>/src/shaders
+# Copy assets and shaders next to the executable
 add_custom_command(TARGET Billiards POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           "${CMAKE_SOURCE_DIR}/assets"
@@ -119,7 +130,6 @@ add_custom_command(TARGET Billiards POST_BUILD
   COMMENT "Copying assets/ and src/shaders/ next to the executable"
 )
 
-# Optional: install rules (cmake --install build)
-install(TARGETS Billiards RUNTIME DESTINATION bin)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/assets/"      DESTINATION bin/assets)
-install(DIRECTORY "${CMAKE_SOURCE_DIR}/src/shaders/" DESTINATION "bin/src/shaders")
+# ---- No install() rules -> no INSTALL target in the solution -----------------
+# (If you need 'cmake --install', re-add install() commands and they will appear
+# under the 'CMake' folder thanks to PREDEFINED_TARGETS_FOLDER.)
