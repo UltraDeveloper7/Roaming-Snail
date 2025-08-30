@@ -42,4 +42,7 @@ private:
 	glm::vec3 position_{0.0f, 1.3f, 0.0f};
 	float pitch_{-glm::half_pi<float>()};
 	float yaw_{0.0f};
+
+	// internal: avoid first-frame mouse jump after enabling rotation
+	bool cursor_initialized_ = false;
 };

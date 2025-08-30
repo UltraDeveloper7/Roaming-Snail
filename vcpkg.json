@@ -1,0 +1,14 @@
+{
+  "name": "billiards",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "glfw3",
+    "glad",
+    "freetype",
+    "tinyxml2",
+    "glm",
+    "earcut-hpp",
+    "tinyobjloader",
+    "stb"
+  ]
+}

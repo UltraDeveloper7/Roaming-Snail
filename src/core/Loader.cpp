@@ -1,7 +1,7 @@
 #include "../precompiled.h"
 #include "Loader.hpp"
 
-#include <stb_image.h>
+#include "stb_image.h"
 
 
 // -----------------------------

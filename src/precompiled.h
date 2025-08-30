@@ -15,7 +15,7 @@
 
 
 #ifndef GLAD_GL_H_
-#include <glad/gl.h>
+#include <glad/glad.h>
 #endif
 
 #include "Config.hpp"

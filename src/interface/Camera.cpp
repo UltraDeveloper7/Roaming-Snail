@@ -2,10 +2,28 @@
 #include "Camera.hpp"
 #include "../core/World.hpp"
 
+
+namespace {
+	// Build a forward unit vector from yaw/pitch (OpenGL RHS, Y-up)
+	inline glm::vec3 DirectionFromAngles(float yaw, float pitch) {
+		const float cp = cosf(pitch), sp = sinf(pitch);
+		const float cy = cosf(yaw), sy = sinf(yaw);
+		return glm::normalize(glm::vec3(cy * cp, sp, sy * cp));
+	}
+
+	inline glm::mat4 LookAtFromPosDir(const glm::vec3& pos, const glm::vec3& dir) {
+		constexpr glm::vec3 kUp(0.f, 1.f, 0.f);
+		return glm::lookAt(pos, pos + dir, kUp);
+	}
+}
+
+
+
 void Camera::Init()
 {
 	UpdateProjectionMatrix(Config::width, Config::height);
 	view_matrix_ = glm::mat4(1.0f);
+	cursor_initialized_ = false;
 }
 
 void Camera::UpdateViewMatrix(const float frame_time)
@@ -14,24 +32,30 @@ void Camera::UpdateViewMatrix(const float frame_time)
 	{
 		GLFWwindow* window = glfwGetCurrentContext();
 
-		constexpr glm::vec3 up = { 0.0f, 1.0f, 0.0f };
-		const glm::vec3 direction = glm::normalize(glm::vec3(
-			cos(yaw_) * cos(pitch_),
-			sin(pitch_),
-			sin(yaw_) * cos(pitch_)));
+		const glm::vec3 dir = DirectionFromAngles(yaw_, pitch_);
 
 		if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
 		{
-			Move(window, direction, Config::movement_speed * frame_time);
+			Move(window, dir, Config::movement_speed * frame_time);
 			Rotate(window, Config::rotation_speed * frame_time);
 		}
+		else {
+			// when cursor is free, forget prior to avoid a jump the next time we lock
+			cursor_initialized_ = false;
+		}
 
-		view_matrix_ = glm::lookAt(position_, position_ + direction, up);
+		view_matrix_ = LookAtFromPosDir(position_, dir);
 	}
 	else
 	{
-		// For top-down view, look straight down
-		view_matrix_ = glm::lookAt(position_, position_ + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f));
+		// Top-down: straight down, with a sideways "up" so it doesn't roll
+		// Matches your previous behavior.
+		view_matrix_ = glm::lookAt(
+			position_,
+			position_ + glm::vec3(0.0f, -1.0f, 0.0f),
+			glm::vec3(0.0f, 0.0f, -1.0f)
+		);
+		cursor_initialized_ = false;
 	}
 }
 
@@ -49,23 +73,23 @@ void Camera::UpdateMain(const std::shared_ptr<Shader>& main_shader, const World&
 
 	const int max_shader_lights = Config::max_shader_lights; // Matches `lights[14]` in the shader
 
-	// 1. Set non-physical lights
-	for (int i = 0; i < Config::light_count; i++) {
-		if (i >= max_shader_lights) break;  // Prevent overflow
-		const float light_position_x = i % 2 ? 2.0f * i : -2.0f * i;
-		main_shader->SetVec3(glm::vec3(20.0f), std::string("lights[") + std::to_string(i) + "].color");
-		main_shader->SetVec3(glm::vec3(light_position_x, 2.0f, 0.0f), std::string("lights[") + std::to_string(i) + "].position");
+	// 1) Virtual lights
+	for (int i = 0; i < Config::light_count && i < max_shader_lights; ++i) {
+		const float lx = (i % 2) ? 2.0f * i : -2.0f * i;
+		main_shader->SetVec3(glm::vec3(20.0f), "lights[" + std::to_string(i) + "].color");
+		main_shader->SetVec3(glm::vec3(lx, 2.0f, 0.0f), "lights[" + std::to_string(i) + "].position");
 		main_shader->SetBool(true, "lights[" + std::to_string(i) + "].isOn");
 	}
 
-	// 2. Set physical lights
+
+	// 2) Physical lights
 	const auto& lights = world.GetLights();
-	for (int i = 0; i < lights.size(); i++) {
-		int shader_index = Config::light_count + i;
-		if (shader_index >= max_shader_lights) break;  // Prevent overflow
-		main_shader->SetVec3(lights[i]->GetColor(), std::string("lights[") + std::to_string(shader_index) + "].color");
-		main_shader->SetVec3(lights[i]->GetPosition(), std::string("lights[") + std::to_string(shader_index) + "].position");
-		main_shader->SetBool(lights[i]->IsOn(), "lights[" + std::to_string(shader_index) + "].isOn");
+	for (int i = 0; i < static_cast<int>(lights.size()); ++i) {
+		const int idx = Config::light_count + i;
+		if (idx >= max_shader_lights) break;
+		main_shader->SetVec3(lights[i]->GetColor(), "lights[" + std::to_string(idx) + "].color");
+		main_shader->SetVec3(lights[i]->GetPosition(), "lights[" + std::to_string(idx) + "].position");
+		main_shader->SetBool(lights[i]->IsOn(), "lights[" + std::to_string(idx) + "].isOn");
 	}
 
 	// 3. Set `lightCount` to the correct number
@@ -139,6 +163,14 @@ void Camera::Rotate(GLFWwindow* window, const float factor)
 	double current_cursor_x, current_cursor_y;
 	glfwGetCursorPos(window, &current_cursor_x, &current_cursor_y);
 
+	// On first frame after locking the cursor, initialize without applying a delta
+	if (!cursor_initialized_)
+	{
+		prior_cursor_ = { static_cast<float>(current_cursor_x), static_cast<float>(current_cursor_y) };
+		cursor_initialized_ = true;
+		return;
+	}
+
 	const glm::vec2 delta = { static_cast<float>(current_cursor_x) - prior_cursor_.x, static_cast<float>(current_cursor_y) - prior_cursor_.y };
 	prior_cursor_ = { current_cursor_x, current_cursor_y };
 
@@ -165,6 +197,7 @@ void Camera::SetTopDownView(bool enabled) {
 		position_ = glm::vec3(0.0f, 1.3f, 0.0f);
 		pitch_ = -glm::half_pi<float>();
 	}
+	cursor_initialized_ = false;
 }
 
 bool Camera::IsTopDownView() const {
@@ -177,7 +210,7 @@ glm::vec3 Camera::GetCursorWorldPosition() const
 	glfwGetCursorPos(glfwGetCurrentContext(), &cursor_x, &cursor_y);
 
 	glm::vec4 viewport = glm::vec4(0.0f, 0.0f, Config::width, Config::height);
-	glm::vec3 screen_pos = glm::vec3(cursor_x, Config::height - cursor_y, 0.0f);
+	glm::vec3 screen_pos = glm::vec3(static_cast<float>(cursor_x), static_cast<float>(Config::height - cursor_y), 0.0f);
 	glm::vec3 world_pos = glm::unProject(screen_pos, view_matrix_, projection_matrix_, viewport);
 
 	return world_pos;
@@ -192,16 +225,16 @@ glm::vec3 Camera::GetCursorWorldPosition() const
 std::pair<glm::vec3, glm::vec3> Camera::GetMouseRay(float mouseX, float mouseY, int screenW, int screenH) const
 {
 	// Convert [0..screenW, 0..screenH] to Normalized Device Coordinates:
-	float ndcX = (2.f * mouseX) / float(screenW) - 1.f;
-	float ndcY = 1.f - (2.f * mouseY) / float(screenH);
+	const float ndcX = (2.f * mouseX) / float(screenW) - 1.f;
+	const float ndcY = 1.f - (2.f * mouseY) / float(screenH);
 
 	glm::vec4 rayClip(ndcX, ndcY, -1.f, 1.f);
-	glm::mat4 invProj = glm::inverse(projection_matrix_);
+	const glm::mat4 invProj = glm::inverse(projection_matrix_);
 	glm::vec4 rayEye = invProj * rayClip;
 	rayEye.z = -1.f; // forward
 	rayEye.w = 0.f;
 
-	glm::mat4 invView = glm::inverse(view_matrix_);
+	const glm::mat4 invView = glm::inverse(view_matrix_);
 	glm::vec4 rayWorld = invView * rayEye;
 
 	glm::vec3 dir = glm::normalize(glm::vec3(rayWorld));

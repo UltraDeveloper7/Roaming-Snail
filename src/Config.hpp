@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "../precompiled.h"
+#include "../src/precompiled.h"
 #include <string>
 #include <glm/vec3.hpp>
 

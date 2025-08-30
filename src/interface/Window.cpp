@@ -168,7 +168,7 @@ void Window::createWindow()
 void Window::loadGL()
 {
     // gladLoadGL returns a function pointer; we check success instead
-    if (!gladLoadGL(glfwGetProcAddress)) {
+    if (!gladLoadGL()) {
         throw std::runtime_error("Failed to load OpenGL functions (gladLoadGL)");
     }
 }

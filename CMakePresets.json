@@ -1,0 +1,24 @@
+{
+  "version": 5,
+  "configurePresets": [
+    {
+      "name": "vs2022-x64",
+      "displayName": "VS2022 x64",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL",
+        "CMAKE_TOOLCHAIN_FILE": "C:/DEV/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_HOST_TRIPLET": "x64-windows",
+        "VCPKG_FEATURE_FLAGS": "manifests,versions,binarycaching"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "Debug",   "configurePreset": "vs2022-x64", "configuration": "Debug" },
+    { "name": "Release", "configurePreset": "vs2022-x64", "configuration": "Release" }
+  ]
+}
