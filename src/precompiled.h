@@ -36,6 +36,7 @@
 #include <vector>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <cstdlib>
 #include <cassert>
 #include <iostream>
@@ -48,6 +49,7 @@
 #include <algorithm>
 #include <random>
 #include <functional>
+#include <utility>
 
 // Include mapbox/earcut.hpp
 #include <mapbox/earcut.hpp>

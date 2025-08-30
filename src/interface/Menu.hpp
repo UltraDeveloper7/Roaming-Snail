@@ -1,10 +1,5 @@
 #pragma once
-
-#include <string>
-#include <string_view>
-#include <vector>
-#include <format>
-#include <utility> // For std::forward
+#include "../precompiled.h"
 
 template <typename... Args>
 std::string BuildString(std::string_view fmt, Args&&... args) {
