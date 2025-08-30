@@ -21,7 +21,7 @@ struct Config final
 
 	// Camera
 	inline static constexpr bool bound_camera = true;
-	inline static float fov = 1.3f;
+	inline static float fov = 1.55f; // ~89 degrees
 	inline static constexpr float near_clip = 0.001f;
 	inline static constexpr float far_clip = 1000.0f;
 	inline static constexpr float movement_speed = 2.0f;

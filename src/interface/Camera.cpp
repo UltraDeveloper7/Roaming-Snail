@@ -194,7 +194,7 @@ void Camera::SetTopDownView(bool enabled) {
 	}
 	else {
 		// Reset to default position and orientation
-		position_ = glm::vec3(0.0f, 1.3f, 0.0f);
+		position_ = glm::vec3(0.0f, 1.55f, 0.25f);
 		pitch_ = -glm::half_pi<float>();
 	}
 	cursor_initialized_ = false;

@@ -4,7 +4,6 @@
 
 // ------------------------------
 // Post processing internals
-// (kept local to this file—no App.hpp changes needed)
 // ------------------------------
 namespace {
 	GLuint sceneFBO = 0, sceneColor = 0, sceneDepth = 0;
