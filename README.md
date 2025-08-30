@@ -132,7 +132,7 @@ CMAKE_TOOLCHAIN_FILE = C:/DEV/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 ## Directory Structure
 ```
-Billiards/
+8-Ball-Pool/
 ├── assets/              # Fonts, HDRs, models, textures
 ├── src/                 # Source code
 │   ├── core/            # Core engine code
