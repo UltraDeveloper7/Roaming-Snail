@@ -178,7 +178,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
         };
 
     // Title
-    AddText(0.5f, 0.90f, "BILLIARDS", 2.0f, Alignment::CENTER);
+    AddText(0.5f, 0.90f, "8 Ball Pool", 2.0f, Alignment::CENTER);
 
     // ==============================================================
     //   NO GAME STARTED — initial menu layout

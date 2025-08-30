@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(Billiards LANGUAGES CXX)
+project(8-Ball-Pool LANGUAGES CXX)
 
 # --- VS: keep utility targets out of the way
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -24,19 +24,20 @@ if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/appicon.rc")
   list(APPEND BILLIARDS_SRC "${CMAKE_SOURCE_DIR}/appicon.rc")
 endif()
 
-add_executable(Billiards ${BILLIARDS_SRC})
+add_executable(EightBallPool ${BILLIARDS_SRC})
 source_group(TREE "${CMAKE_SOURCE_DIR}" FILES ${BILLIARDS_SRC})
 
-# --- Properties for the *existing* target (must be AFTER add_executable)
-set_target_properties(Billiards PROPERTIES
-  FOLDER ""                                   # keep at solution root
+# --- Target properties
+set_target_properties(EightBallPool PROPERTIES
+  OUTPUT_NAME "8-Ball-Pool"                         # final exe name
+  FOLDER ""
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-  VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:Billiards>"
+  VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:EightBallPool>"
 )
-target_include_directories(Billiards PRIVATE "${CMAKE_SOURCE_DIR}/src")
+set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT EightBallPool)
 
-# Opt-in to GLM experimental extensions if you use them
-target_compile_definitions(Billiards PRIVATE GLM_ENABLE_EXPERIMENTAL)
+target_include_directories(EightBallPool PRIVATE "${CMAKE_SOURCE_DIR}/src")
+target_compile_definitions(EightBallPool PRIVATE GLM_ENABLE_EXPERIMENTAL)
 
 # --- Deps via vcpkg
 find_package(OpenGL REQUIRED)
@@ -47,7 +48,7 @@ find_package(tinyxml2       CONFIG REQUIRED)
 find_package(glm            CONFIG REQUIRED)
 find_package(tinyobjloader  CONFIG REQUIRED)
 
-# stb (header-only). You can also: find_package(Stb REQUIRED)
+# stb (header-only)
 find_path(STB_INCLUDE_DIR "stb_image.h"
   PATHS
     "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}"
@@ -58,9 +59,9 @@ find_path(STB_INCLUDE_DIR "stb_image.h"
 if(NOT STB_INCLUDE_DIR)
   message(FATAL_ERROR "stb_image.h not found. Ensure 'stb' is in vcpkg.json and the vcpkg toolchain is active.")
 endif()
-target_include_directories(Billiards PRIVATE "${STB_INCLUDE_DIR}")
+target_include_directories(EightBallPool PRIVATE "${STB_INCLUDE_DIR}")
 
-# mapbox/earcut.hpp (header-only) from vcpkg port "earcut-hpp"
+# mapbox/earcut.hpp (header-only)
 find_path(MAPBOX_EARCUT_INCLUDE_DIR "mapbox/earcut.hpp"
   PATHS
     "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}"
@@ -74,7 +75,7 @@ endif()
 if(NOT MAPBOX_EARCUT_INCLUDE_DIR)
   message(FATAL_ERROR "mapbox/earcut.hpp not found. Ensure 'earcut-hpp' is in vcpkg.json and the vcpkg toolchain is active.")
 endif()
-target_include_directories(Billiards PRIVATE "${MAPBOX_EARCUT_INCLUDE_DIR}")
+target_include_directories(EightBallPool PRIVATE "${MAPBOX_EARCUT_INCLUDE_DIR}")
 
 # glfw target name portability
 if(TARGET glfw)
@@ -87,7 +88,7 @@ else()
   message(FATAL_ERROR "Could not resolve a GLFW target name.")
 endif()
 
-target_link_libraries(Billiards PRIVATE
+target_link_libraries(EightBallPool PRIVATE
   ${GLFW_TARGET}
   glad::glad
   Freetype::Freetype
@@ -97,25 +98,25 @@ target_link_libraries(Billiards PRIVATE
   OpenGL::GL
 )
 if(WIN32)
-  target_link_libraries(Billiards PRIVATE user32 gdi32 shell32)
+  target_link_libraries(EightBallPool PRIVATE user32 gdi32 shell32)
 endif()
 
 # --- Resources: add + copy shaders
 file(GLOB_RECURSE SHADER_FILES "${CMAKE_SOURCE_DIR}/src/shaders/*")
 if(SHADER_FILES)
-  target_sources(Billiards PRIVATE ${SHADER_FILES})
+  target_sources(EightBallPool PRIVATE ${SHADER_FILES})
   foreach(_s IN LISTS SHADER_FILES)
     set_source_files_properties("${_s}" PROPERTIES HEADER_FILE_ONLY ON)
   endforeach()
   source_group(TREE "${CMAKE_SOURCE_DIR}" FILES ${SHADER_FILES})
 endif()
 
-add_custom_command(TARGET Billiards POST_BUILD
+add_custom_command(TARGET EightBallPool POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           "${CMAKE_SOURCE_DIR}/assets"
-          "$<TARGET_FILE_DIR:Billiards>/assets"
+          "$<TARGET_FILE_DIR:EightBallPool>/assets"
   COMMAND ${CMAKE_COMMAND} -E copy_directory
           "${CMAKE_SOURCE_DIR}/src/shaders"
-          "$<TARGET_FILE_DIR:Billiards>/src/shaders"
+          "$<TARGET_FILE_DIR:EightBallPool>/src/shaders"
   COMMENT "Copying assets/ and src/shaders/ next to the executable"
 )
