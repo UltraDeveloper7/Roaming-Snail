@@ -2,6 +2,137 @@
 #include "App.hpp"
 #include "../objects/CueBallMap.hpp"
 
+// ------------------------------
+// Post processing internals
+// (kept local to this file—no App.hpp changes needed)
+// ------------------------------
+namespace {
+	GLuint sceneFBO = 0, sceneColor = 0, sceneDepth = 0;
+	GLuint pingFBO[2]{ 0,0 }, pingColor[2]{ 0,0 };
+	GLuint quadVAO = 0, quadVBO = 0;
+	int    ppW = 0, ppH = 0;
+
+	std::shared_ptr<Shader> blurShader, screenShader;
+
+	static GLuint makeColorTex(int w, int h) {
+		GLuint t; glGenTextures(1, &t);
+		glBindTexture(GL_TEXTURE_2D, t);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, w, h, 0, GL_RGBA, GL_FLOAT, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		return t;
+	}
+
+	static void createOrResizePost(int w, int h) {
+		if (w <= 0 || h <= 0) return;
+		const bool firstTime = (quadVAO == 0);
+
+		// Fullscreen quad (once)
+		if (firstTime) {
+			float verts[] = {
+				// pos      // uv
+				-1.f,-1.f, 0.f,0.f,
+				 1.f,-1.f, 1.f,0.f,
+				 1.f, 1.f, 1.f,1.f,
+				-1.f,-1.f, 0.f,0.f,
+				 1.f, 1.f, 1.f,1.f,
+				-1.f, 1.f, 0.f,1.f
+			};
+			glGenVertexArrays(1, &quadVAO);
+			glGenBuffers(1, &quadVBO);
+			glBindVertexArray(quadVAO);
+			glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+			glEnableVertexAttribArray(1);
+			glBindVertexArray(0);
+
+			// Shaders (placed in src/shaders/, see below)
+			blurShader = std::make_shared<Shader>(Config::post_vertex_path,
+				Config::blur_fragment_path);
+			screenShader = std::make_shared<Shader>(Config::post_vertex_path,
+				Config::screen_fragment_path);
+		}
+
+		// (Re)create scene FBO + depth
+		if (sceneFBO == 0) glGenFramebuffers(1, &sceneFBO);
+		glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO);
+
+		if (sceneColor) glDeleteTextures(1, &sceneColor);
+		sceneColor = makeColorTex(w, h);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sceneColor, 0);
+
+		if (sceneDepth == 0) glGenRenderbuffers(1, &sceneDepth);
+		glBindRenderbuffer(GL_RENDERBUFFER, sceneDepth);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, w, h);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, sceneDepth);
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		// ping-pong FBOs
+		if (pingFBO[0] == 0) glGenFramebuffers(2, pingFBO);
+		if (pingColor[0]) glDeleteTextures(1, &pingColor[0]);
+		if (pingColor[1]) glDeleteTextures(1, &pingColor[1]);
+		pingColor[0] = makeColorTex(w, h);
+		pingColor[1] = makeColorTex(w, h);
+		for (int i = 0; i < 2; ++i) {
+			glBindFramebuffer(GL_FRAMEBUFFER, pingFBO[i]);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, pingColor[i], 0);
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		ppW = w; ppH = h;
+	}
+
+	static void renderQuad() {
+		glBindVertexArray(quadVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
+	}
+
+	static GLuint blurChain(GLuint inputTex, int passes) {
+		if (!blurShader) return inputTex;
+		blurShader->Bind();
+		blurShader->SetInt(0, "src");
+		blurShader->SetVec2(glm::vec2(1.f / ppW, 1.f / ppH), "texel");
+
+		bool horizontal = true;
+		GLuint cur = inputTex;
+		for (int i = 0; i < passes; ++i) {
+			glBindFramebuffer(GL_FRAMEBUFFER, pingFBO[horizontal ? 0 : 1]);
+			glDisable(GL_DEPTH_TEST);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, cur);
+			blurShader->SetVec2(horizontal ? glm::vec2(1, 0) : glm::vec2(0, 1), "dir");
+			glClear(GL_COLOR_BUFFER_BIT);
+			renderQuad();
+			cur = pingColor[horizontal ? 0 : 1];
+			horizontal = !horizontal;
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		return cur;
+	}
+
+	static void present(GLuint tex, const glm::vec4& tint, float vignette) {
+		if (!screenShader) return;
+		screenShader->Bind();
+		screenShader->SetInt(0, "src");
+		screenShader->SetVec4(tint, "tint");
+		screenShader->SetFloat(vignette, "vignette");
+
+		glDisable(GL_DEPTH_TEST);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, tex);
+		renderQuad();
+	}
+} // anonymous namespace
+
+// -------------------------------------------------------------
+
 App::App() :
 	window_(std::make_unique<Window>()),
 	text_renderer_(std::make_unique<TextRenderer>()),
@@ -17,6 +148,9 @@ App::App() :
 	//Logger::Init("log.txt");
 	text_renderer_->Init();
 	camera_->Init();
+
+	// create post stack at current window size
+	createOrResizePost(window_->GetWidth(), window_->GetHeight());
 }
 
 App::~App() {
@@ -46,10 +180,11 @@ void App::OnUpdate()
 
 	HandleState();
 
+	// ---------- render scene into offscreen FBO ----------
+	glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO);
+	glViewport(0, 0, ppW, ppH);
 	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	// make sure depth testing is ON before drawing the 3D scene
 	glEnable(GL_DEPTH_TEST);
 
 	if (world_)
@@ -59,38 +194,29 @@ void App::OnUpdate()
 
 		environment_->Prepare();
 
-		//-----------------------------------------------//
-		// 1) Render all the shadow maps
+		// 1) all shadow maps
 		RenderShadowMap();
 
-		// (2) Bind each shadow map & pass lightSpaceMatrix (array upload)
-		main_shader_->Bind();
+		// make sure we’re back rendering into the offscreen scene FBO
+		glBindFramebuffer(GL_FRAMEBUFFER, sceneFBO);
+		glViewport(0, 0, ppW, ppH);
 
-		// how many lights we actually use this frame
+		// 2) bind depth maps & matrices in one go
+		main_shader_->Bind();
 		int total_lights = Config::light_count + (int)world_->GetLights().size();
 		int finalLightCount = std::min(total_lights, Config::max_shader_lights);
-
-		// tell the shader the count
 		main_shader_->SetInt(finalLightCount, "lightCount");
 
-		// bind depth textures to TU 9.. and gather the units we used
 		int units[Config::max_shader_lights];
-		for (int i = 0; i < finalLightCount; ++i)
-		{
+		for (int i = 0; i < finalLightCount; ++i) {
 			glActiveTexture(GL_TEXTURE0 + 9 + i);
 			glBindTexture(GL_TEXTURE_2D, environment_->depthMap[i]);
 			units[i] = 9 + i;
-
-			// upload the matching light-space matrix
 			std::string matName = "lightSpaceMatrix[" + std::to_string(i) + "]";
 			main_shader_->SetMat4(lightSpaceMatrices_[i], matName.c_str());
 		}
-
-		// set the WHOLE sampler array in one call (critical for some drivers)
 		main_shader_->SetIntArray("shadowMap[0]", units, finalLightCount);
-
 		main_shader_->Unbind();
-		//-----------------------------------------------//
 
 		world_->Update(static_cast<float>(delta_time_), !in_menu_);
 		world_->Draw(main_shader_);
@@ -98,83 +224,96 @@ void App::OnUpdate()
 		camera_->UpdateBackground(background_shader_);
 		environment_->Draw(background_shader_);
 
-		// Update CueBallMap visibility based on camera view and ball movement
+		// CueBallMap visibility
 		bool isTopDownView = camera_->IsTopDownView();
-		bool ballsAreMoving = world_->AreBallsInMotion();
-		bool shouldBeVisible = isTopDownView && !ballsAreMoving;
-		cue_ball_map_->SetVisible(shouldBeVisible);
+		bool ballsMoving = world_->AreBallsInMotion();
+		bool shouldVisible = isTopDownView && !ballsMoving;
+		cue_ball_map_->SetVisible(shouldVisible);
 		if (cue_ball_map_->IsVisible()) {
 			cue_ball_map_->Draw();
 			cue_ball_map_->HandleMouseInput(window_->GetGLFWWindow());
 		}
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0); // backbuffer
 
+	// ---------- post: blur + tint, then draw text ----------
+	const bool paused = in_menu_ && has_started_;
+	const bool firstPage = in_menu_ && !has_started_;
+
+	GLuint shown = sceneColor;
+	if (paused) {
+		shown = blurChain(sceneColor, 6);                             // stronger blur
+		present(shown, glm::vec4(0.0f, 0.0f, 0.0f, 0.18f), 0.15f);    // neutral dark tint
+	}
+	else if (firstPage) {
+		shown = blurChain(sceneColor, 4);                             // mild blur
+		present(shown, glm::vec4(0.055f, 0.415f, 0.239f, 0.18f), 0.12f); // felt green tint
+	}
+	else {
+		present(sceneColor, glm::vec4(0, 0, 0, 0), 0.0f);                // no effect
 	}
 
-	if (in_menu_)
-		menu_->Draw(world_ == nullptr, has_started_);
-
 	// ---- text UI pass ----
-	// draw text without depth, then restore it immediately
 	GLboolean depthWasEnabled = glIsEnabled(GL_DEPTH_TEST);
 	glDisable(GL_DEPTH_TEST);
 
-	// Show current player
 	if (world_) {
 		const auto& players = world_->GetPlayers();
 		const auto& current_player = players[world_->GetCurrentPlayerIndex()];
 		menu_->AddText(0.0f, 0.95f, "Current Player: " + current_player.GetName(), 0.6f);
 
-		// Show the shot clock
 		float clockSec = world_->GetShotClock();
 		menu_->AddText(0.0f, 0.90f, "Shot Clock: " + std::to_string((int)clockSec), 0.6f);
 
-		//short message in the center 
 		const std::string msg = world_->GetMessage();
 		if (!msg.empty())
-		{
 			menu_->AddText(0.35f, 0.95f, msg, 0.75f);
-		}
 	}
+
+	if (in_menu_)
+		menu_->Draw(world_ == nullptr, has_started_);
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	text_renderer_->Render(menu_->GetTexts());
+	glDisable(GL_BLEND);
 
-	// Handle menu clicks
+	// ------------------------------
+	// Handle menu clicks (missing before)
+	// ------------------------------
 	if (in_menu_) {
+		// Play / Resume
 		if (menu_->ConsumePlayClicked()) {
 			in_menu_ = false;
 			glfwSetInputMode(window_->GetGLFWWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			if (!world_) {
 				Load();
-				has_started_ = true;            // mark that a game has started at least once
+				has_started_ = true;            // mark game as started
 				world_->ResetPlayerIndex();
 				last_frame_ = glfwGetTime();
 			}
 		}
+		// Reset
 		if (menu_->ConsumeResetClicked() && world_) {
 			world_->Reset();
 			world_->ResetGame();
 		}
+		// Exit
 		if (menu_->ConsumeExitClicked()) {
 			window_->SetCloseFlag();
 		}
 	}
 
-	glDisable(GL_BLEND);
+	if (depthWasEnabled) glEnable(GL_DEPTH_TEST);
 
-	if (depthWasEnabled) glEnable(GL_DEPTH_TEST);   // restore for next frame
-
+	// light toggles 0..9
 	static bool key_was_pressed[10] = { false };
 	GLFWwindow* w = window_->GetGLFWWindow();
 	for (int key = GLFW_KEY_0; key <= GLFW_KEY_9; ++key) {
 		int lightIndex = key - GLFW_KEY_0;
 		bool isPressed = (glfwGetKey(w, key) == GLFW_PRESS);
-
 		if (isPressed && !key_was_pressed[lightIndex]) {
-			if (world_) {
-				world_->ToggleLight(lightIndex);
-			}
+			if (world_) world_->ToggleLight(lightIndex);
 			key_was_pressed[lightIndex] = true;
 		}
 		else if (!isPressed && key_was_pressed[lightIndex]) {
@@ -182,7 +321,6 @@ void App::OnUpdate()
 		}
 	}
 }
-
 
 void App::OnResize() const
 {
@@ -201,6 +339,9 @@ void App::OnResize() const
 	// Update CueBallMap window size
 	if (cue_ball_map_)
 		cue_ball_map_->UpdateWindowSize();
+
+	// resize post stack
+	createOrResizePost(new_width, new_height);
 
 	window_->ResetResizedFlag();
 }
@@ -231,70 +372,42 @@ void App::Load()
 	main_shader_->Unbind();
 }
 
-
 void App::RenderShadowMap()
 {
+	// --- save current framebuffer & viewport (so we can restore them) ---
+	GLint prevFBO = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFBO);
+	GLint vp[4];       glGetIntegerv(GL_VIEWPORT, vp);
+
 	// We'll produce an orthographic projection for each shadow:
 	const float S = Config::shadow_extent;
 	glm::mat4 lightProjection = glm::ortho(-S, S, -S, S, Config::near_plane, Config::far_plane);
 
-
-	// We have 3 “virtual” (non‐physical) lights + however many physical are in World
-	// total_lights = 3 + e.g. 10 => up to 13
-	const auto& physicalLights = world_->GetLights(); // The 10 real bulbs
+	const auto& physicalLights = world_->GetLights();
 	const int total_lights = Config::light_count + static_cast<int>(physicalLights.size());
+	const int finalLightCount = std::min(total_lights, Config::max_shader_lights);
 
-	// For safety, clamp to max_shader_lights so we don't exceed our array
-	int finalLightCount = std::min(total_lights, Config::max_shader_lights);
-
-	for (int i = 0; i < finalLightCount; i++)
+	for (int i = 0; i < finalLightCount; ++i)
 	{
-		// 1) Determine the position of this i-th light.
 		glm::vec3 lightPos;
-		bool isOn = true;  // We'll override if it's a physical light that is off
+		bool isOn = true;
 
-		if (i < Config::light_count)
-		{
-			// This is one of the 3 virtual lights
-			// Example logic from Camera::UpdateMain:
-			// e.g. float light_position_x = i % 2 ? 2.0f*i : -2.0f*i;
-			// place them at (light_position_x, 2.0, 0.0)
+		if (i < Config::light_count) {
 			const float light_position_x = (i % 2) ? 2.0f * i : -2.0f * i;
 			lightPos = glm::vec3(light_position_x, 2.0f, 0.0f);
-
-			// If you want to treat them as always ON for shadows, keep isOn=true.
-			// Or you can add some condition to skip them if you want.
 		}
-		else
-		{
-			// This is one of the "physical" lights in world_->GetLights()
-			int physicalIndex = i - Config::light_count;
-
-			// Safety check: skip if out of range
-			if (physicalIndex >= static_cast<int>(physicalLights.size()))
-				break;
-
-			auto& lightPtr = physicalLights[physicalIndex];
-			lightPos = lightPtr->GetPosition();
-			isOn = lightPtr->IsOn();  // skip rendering shadows if off
+		else {
+			const int physicalIndex = i - Config::light_count;
+			if (physicalIndex >= static_cast<int>(physicalLights.size())) break;
+			auto& l = physicalLights[physicalIndex];
+			lightPos = l->GetPosition();
+			isOn = l->IsOn();
 		}
+		if (!isOn) continue;
 
-		// 2) Skip shadow pass if not ON
-		if (!isOn)
-			continue;
-
-		// 3) Build the view & final matrix
-		glm::mat4 lightView = glm::lookAt(
-			lightPos,
-			glm::vec3(0.0f, 0.0f, 0.0f), // e.g. looking at origin or center
-			glm::vec3(0.0f, 1.0f, 0.0f)
-		);
+		glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
 		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
-
-		// 4) Store it in our array, so we can pass it to main shader
 		lightSpaceMatrices_[i] = lightSpaceMatrix;
 
-		// 5) Use the depthShader to render depth into environment_->depthMap[i]
 		depthShader->Bind();
 		depthShader->SetMat4(lightSpaceMatrix, "lightSpaceMatrix");
 
@@ -302,17 +415,14 @@ void App::RenderShadowMap()
 		glBindFramebuffer(GL_FRAMEBUFFER, environment_->depthMapFBO[i]);
 		glClear(GL_DEPTH_BUFFER_BIT);
 
-		// Draw the scene from this light's POV
 		world_->Draw(depthShader);
-
-		// unbind
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 
-	// Finally, restore your window viewport
-	glViewport(0, 0, window_->GetWidth(), window_->GetHeight());
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// --- restore framebuffer & viewport exactly as they were ---
+	glBindFramebuffer(GL_FRAMEBUFFER, prevFBO);
+	glViewport(vp[0], vp[1], vp[2], vp[3]);
 }
+
 
 void App::HandleState()
 {
@@ -326,13 +436,10 @@ void App::HandleState()
 	// Ask the menu whether any modal is open (settings/help)
 	bool modalOpen = false;
 	if (menu_) {
-		// requires small getters in Menu.hpp (see below)
 		modalOpen = menu_->IsSettingsOpen() || menu_->IsHelpOpen();
 	}
 
-	// -------------------------------
 	// 1) In-game -> ESC opens the menu
-	// -------------------------------
 	if (!in_menu_) {
 		if (escPressed) {
 			in_menu_ = true;
@@ -341,11 +448,8 @@ void App::HandleState()
 			return;
 		}
 	}
-	// --------------------------------------------
-	// 2) In menu and game NOT started and NO modal
-	//    -> ESC quits the application
-	// --------------------------------------------
-	else { // in_menu_ == true
+	// 2) In menu and game NOT started and NO modal -> ESC quits
+	else {
 		if (!has_started_ && escPressed && !modalOpen) {
 			window_->SetCloseFlag();
 			prevEsc = escNow;
@@ -354,9 +458,7 @@ void App::HandleState()
 		// Note: when a modal is open, ESC is handled inside Menu.cpp to close it.
 	}
 
-	// -------------------------------------------
 	// 3) Only handle camera toggle when NOT in menu
-	// -------------------------------------------
 	if (!in_menu_) {
 		static int last_mouse_button_state = GLFW_RELEASE;
 		const int mouse_button_state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
@@ -380,8 +482,5 @@ void App::HandleState()
 		last_mouse_button_state = mouse_button_state;
 	}
 
-	// remember ESC for next frame
 	prevEsc = escNow;
 }
-
-

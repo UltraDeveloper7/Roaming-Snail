@@ -8,7 +8,9 @@ public:
 	void Bind() const;
 	void Unbind() const;
 
+	void SetVec2(const glm::vec2& v, const std::string& name) const;
 	void SetVec3(const glm::vec3& v, const std::string& name) const;
+	void SetVec4(const glm::vec4& v, const std::string& name) const;
 	void SetMat4(const glm::mat4& m, const std::string& name) const;
 	void SetFloat(float s, const std::string& name) const;
 	void SetInt(int n, const std::string& name) const;

@@ -25,12 +25,11 @@ namespace {
             v -= lineGap;
         }
     }
-} 
+}
 
 // --------------------------------------------------------------------//
 
 Menu::Menu(const int width, const int height) : width_(width), height_(height) {
-    // no initial selection → nothing is red until hover/arrow keys
     selected_ = -1;
     last_mouse_ = GLFW_RELEASE;
 }
@@ -43,7 +42,6 @@ void Menu::beginFrameCaptureMouse()
     GLFWwindow* w = glfwGetCurrentContext();
     double mx, my;
     glfwGetCursorPos(w, &mx, &my);
-    // convert to bottom-left origin to match our text coordinates
     int ww, wh;
     glfwGetWindowSize(w, &ww, &wh);
     mouse_x_ = mx;
@@ -52,8 +50,7 @@ void Menu::beginFrameCaptureMouse()
 
 float Menu::estimateWidthPx(const std::string& s, float scale) const
 {
-    // very rough: average glyph ≈ 0.62 * font_size
-    constexpr float kAvg = 0.62f;
+    constexpr float kAvg = 0.62f; // rough glyph width
     const float base = static_cast<float>(Config::default_font_size);
     return static_cast<float>(s.size()) * base * kAvg * scale;
 }
@@ -85,7 +82,7 @@ bool Menu::button(float u, float v, const std::string& label, float scale,
     // draw
     AddText(u, v, label, scale, align, emphasize || hover);
 
-    // CLICK: use frame-wide edge
+    // CLICK: frame-wide edge (set in Draw), requires hover
     bool clicked = hover && mouse_edge_down_;
 
     if (out_w) *out_w = (x1 - x0);
@@ -106,14 +103,24 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     mouse_x_ = mouseX;
     mouse_y_ = mouseY;
 
+    // current input states
     static int prevMouse = GLFW_RELEASE;
-    const int curMouse = glfwGetMouseButton(w, GLFW_MOUSE_BUTTON_LEFT);
-
-    // one-frame “pressed” edge
-    mouse_edge_down_ = (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
+    const int  curMouse = glfwGetMouseButton(w, GLFW_MOUSE_BUTTON_LEFT);
 
     static int prevEnter = GLFW_RELEASE;
-    const int curEnter = glfwGetKey(w, GLFW_KEY_ENTER);
+    const int  curEnter = glfwGetKey(w, GLFW_KEY_ENTER);
+
+    // --- robust mouse click edge (+debounce) ---
+    static double lastClickTime = 0.0;
+    const double now = glfwGetTime();
+
+    const bool pressEdge = (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
+    const bool releaseEdge = (curMouse == GLFW_RELEASE && prevMouse == GLFW_PRESS);
+
+    // fire at most once per 100 ms
+    const bool edgeOk = (pressEdge || releaseEdge) && (now - lastClickTime > 0.10);
+    mouse_edge_down_ = edgeOk;
+    if (edgeOk) lastClickTime = now;
 
     const bool modalOpen = settings_open_ || help_open_;
 
@@ -123,8 +130,8 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     }
 
     // Selection order:
-    //  - not started: 0=Play, 1=Initial conditions, 2=Help
-    //  - started (pause menu center list): 0=Resume, 1=Reset, 2=Initial conditions, 3=Help, 4=Exit
+    //  - not started: 0=Play, 1=Quick Setup, 2=How to Play
+    //  - started (pause center list): 0=Resume, 1=Reset, 2=Quick Setup, 3=How to Play, 4=Exit
     std::vector<int> items;
     if (!has_started) { items = { 0, 1, 2 }; }
     else { items = { 0, 1, 2, 3, 4 }; }
@@ -141,8 +148,6 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
             const float px = u * winW;
             const float py = v * winH;
 
-            // scale up when hovered/selected
-            // (keep math consistent by using the same scale for measuring and drawing)
             float localScale = scale;
 
             // rect based on *base* scale
@@ -161,6 +166,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
 
             AddText(u, v, label, localScale, align, emphasize || hover || isSelected);
 
+            // CLICK requires hover + global edge flag (robust)
             const bool clicked = hover && mouse_edge_down_;
             return clicked;
         };
@@ -261,7 +267,6 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
 
     // =========================
     //  Modal: Quick Setup (RIGHT)
-    //  — while open, every other entry is disabled/hidden
     // =========================
     if (settings_open_) {
         static int focus = 0; // 0 = strike force, 1 = friction
@@ -272,7 +277,6 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
         const float row2V = 0.49f;
         const float closeV = 0.43f;
 
-        // Header shows the DOWN arrow symbol to indicate open state
         AddText(panelU, headV, "Quick Setup  v", 0.9f, Alignment::LEFT, true);
 
         const float lineScale = 0.8f;
@@ -306,7 +310,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
         // Close
         if (drawButton(panelU, closeV, "Close [Esc]", 0.8f, Alignment::LEFT, false, false)) {
             settings_open_ = false;
-            selected_ = has_started ? 2 : 1; // restore to the "Initial conditions" slot
+            selected_ = has_started ? 2 : 1;
         }
 
         // Modal keyboard capture
@@ -346,7 +350,6 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     //  Modal:  How to Play (CENTER)
     // =========================
     if (help_open_) {
-        // Header shows the [i] symbol as requested
         AddText(0.5f, 0.62f, "[i] How to Play", 1.1f, Alignment::CENTER, true);
 
         RenderHelpBlock(*this,
@@ -358,10 +361,9 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
 
         if (drawButton(0.5f, 0.56f - 7 * 0.045f - 0.05f, "Close [Esc]", 0.8f, Alignment::CENTER, false, false)) {
             help_open_ = false;
-            selected_ = has_started ? 3 : 2; // go back to Help slot
+            selected_ = has_started ? 3 : 2;
         }
 
-        // Esc to close (modal capture)
         static int prevEscHelp = GLFW_RELEASE;
         int kEsc = glfwGetKey(w, GLFW_KEY_ESCAPE);
         if (kEsc == GLFW_PRESS && prevEscHelp == GLFW_RELEASE) {
@@ -371,7 +373,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
         prevEscHelp = kEsc;
     }
 
-    // update click-edge trackers
+    // ---- end-of-frame: update trackers (must be last) ----
     prevMouse = curMouse;
     prevEnter = curEnter;
 }

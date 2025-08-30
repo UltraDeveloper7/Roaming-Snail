@@ -48,6 +48,10 @@ struct Config final
 	inline static constexpr const char* const CueMap_fragment_path = "CueMap.fragmentshader";
 	inline static constexpr const char* const sprite_vertex_path = "Spriteshader.vertexshader";
 	inline static constexpr const char* const sprite_fragment_path = "Spriteshader.fragmentshader";
+	inline static constexpr const char* const post_vertex_path = "post.vertexshader";
+	inline static constexpr const char* const blur_fragment_path = "blur.fragmentshader";
+	inline static constexpr const char* const screen_fragment_path = "screen.fragmentshader";
+
 
 
 	// Model
