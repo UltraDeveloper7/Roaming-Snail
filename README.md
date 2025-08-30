@@ -15,13 +15,14 @@ This repository contains the source code for a dual-player Billiards game create
 6. [Prerequisites](#prerequisites)
 7. [Installation](#installation)
 8. [Usage](#usage)
-9. [Running the Game](#running-the-game)
-10. [Directory Structure](#directory-structure)
-11. [Dependencies](#dependencies)
-12. [Contributing](#contributing)
-13. [License](#license)
-14. [Contact](#contact)
-15. [Acknowledgements](#acknowledgements)
+9. [Building with CMake](#building-with-cmake) 
+10. [Running the Game](#running-the-game)
+11. [Directory Structure](#directory-structure)
+12. [Dependencies](#dependencies)
+13. [Contributing](#contributing)
+14. [License](#license)
+15. [Contact](#contact)
+16. [Acknowledgements](#acknowledgements)
 
 ## Features
 - Realistic billiards physics with customizable gameplay.
@@ -32,9 +33,9 @@ This repository contains the source code for a dual-player Billiards game create
 - Comprehensive enforcement of official billiards rules.
 
 ## Technologies Used
-- C
-- C++
+- C / C++
 - OpenGL
+- CMake
 - Visual Studio
 
 ## Libraries
@@ -45,6 +46,7 @@ The following libraries are used in the project:
 - **FreeType**: For rendering text.
 - **stb_image**: For loading images as textures.
 - **tiny_obj_loader**: For loading 3D model files.
+- **earcut-hpp** – Polygon triangulation
 
 ## Controls
 - **Camera Movement**: Use `W`, `A`, `S`, `D` to move the camera, and `Q`, `E` to move it up and down.
@@ -67,8 +69,13 @@ For detailed rules, refer to the [World Pool-Billiard Association (WPA)](https:/
 
 ## Prerequisites
 Before you begin, ensure you have:
-- Visual Studio installed with C++ development tools.
-- OpenGL support on your system.
+1. **Visual Studio 2022** (with C++ Desktop Development tools installed).  
+2. **CMake** ≥ 3.24.  
+3. **vcpkg** installed locally (and bootstrapped at least once):
+   ```powershell
+   git clone https://github.com/microsoft/vcpkg C:/DEV/vcpkg
+   cd C:/DEV/vcpkg
+   .\bootstrap-vcpkg.bat
 
 ## Installation
 ### Clone from GitHub
@@ -87,42 +94,40 @@ Before you begin, ensure you have:
 ## Usage
 To play the Billiards game, build and run the project in Visual Studio, then use the controls described above to interact with the game.
 
+## Building with CMake
+
+
 ## Running the Game
 1. **Open the Project**:
-   - Open the Visual Studio solution file (`Billiards.sln`) in the root directory.
-
-2. **Build the Project**:
-   - Build the solution in Visual Studio to compile the game.
-
-3. **Run the Game**:
-   - Start the game by running the compiled executable from Visual Studio.
+   - Open the Visual Studio solution file (`build/Billiards.sln`) in the build directory.
+   - Ensure assets/ and src/shaders/ are copied next to the exe (CMake handles this automatically).
+     Example layout after build:
+     ```
+     build/bin/Debug/
+        Billiards.exe
+        assets/
+        src/shaders/
+     ```
+2. **Run the Game**:
+   - Run directly from Visual Studio (F5) or by launching Billiards.exe from the build folder.
 
 ## Directory Structure
 ```
 Billiards/
-├── README.md
-├── assets/
-│   ├── fonts/         # Font files used in the project.
-│   ├── hdr/           # High Dynamic Range images for lighting.
-│   ├── models/        # 3D models used in the game.
-│   ├── textures/      # Texture files for materials and surfaces.
-├── src/
-│   ├── core/          # Core functionality like game engine systems.
-│   ├── glad/          # OpenGL library for rendering.
-│   ├── include/       # Header files for shared definitions.
-│   ├── interface/     # UI elements and interaction logic.
-│   ├── objects/       # Definitions for game objects like balls and tables.
-│   ├── shaders/       # Shader programs for rendering effects.
-│   ├── Config.hpp     # Configuration settings for the game.
-│   ├── Logger.hpp     # Logging utility for debugging.
-│   ├── main.cpp       # Entry point of the application.
-│   ├── stdafx.cpp     # Precompiled header source for faster compilation.
-│   ├── stdafx.h       # Precompiled header file for standard includes.
-├── x64/               # Compiled binaries for the 64-bit architecture.
-├── Billiards.sln      # Visual Studio solution file.
-├── Billiards.vcxproj  # Visual Studio project file.
-├── freetype.dll       # FreeType library for font rendering.
-├── log/               # Directory for log files (empty initially).
+├── assets/              # Fonts, HDRs, models, textures
+├── src/                 # Source code
+│   ├── core/            # Core engine code
+│   ├── gameplay/        # Game logic
+│   ├── interface/       # UI
+│   ├── objects/         # Ball, table, cue definitions
+│   ├── shaders/         # GLSL shaders
+│   ├── Config.hpp
+│   ├── Logger.hpp
+│   ├── main.cpp
+│   ├── precompiled.cpp/.h
+├── CMakeLists.txt       # CMake build script
+├── vcpkg.json           # Declares dependencies
+└── build/               # Out-of-source build (generated)
 ```
 
 ## Dependencies
