@@ -81,8 +81,8 @@ Before you begin, ensure you have:
 ### Clone from GitHub
 1. Clone the repository:
     ```bash
-    git clone https://github.com/UltraDeveloper7/Billiards.git
-    cd Billiards
+    git clone https://github.com/UltraDeveloper7/8-Ball-Pool.git
+    cd 8-Ball-Pool
     ```
 
 ### Download as ZIP
@@ -92,18 +92,18 @@ Before you begin, ensure you have:
     - Extract the ZIP file and navigate to the directory.
 
 ## Usage
-To play the Billiards game, build and run the project in Visual Studio, then use the controls described above to interact with the game.
+To play the 8-Ball-Pool game, build and run the project in Visual Studio, then use the controls described above to interact with the game.
 
 ## Building with CMake
 **Step 1: Clone**
 ```
-git clone https://github.com/UltraDeveloper7/Billiards.git
-cd Billiards
+git clone https://github.com/UltraDeveloper7/8-Ball-Pool.git
+cd 8-Ball-Pool
 ```
 **Step 2: Configure with CMake GUI**
 1. Open **CMake GUI**.
-2. **Where is the source code:** set to the repo root (`Billiards/`).
-3. **Where to build the binaries:** create or select `Billiards/build`.
+2. **Where is the source code:** set to the repo root (`8-Ball-Pool/`).
+3. **Where to build the binaries:** create or select `8-Ball-Pool/build`.
 4. Click **Configure** → choose Visual Studio 17 2022, platform `x64`.
 5. In **cache entries**, set:
 ```
@@ -118,21 +118,21 @@ CMAKE_TOOLCHAIN_FILE = C:/DEV/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 ## Running the Game
 1. **Open the Project**:
-   - Open the Visual Studio solution file (`build/Billiards.sln`) in the build directory.
+   - Open the Visual Studio solution file (`build/8-Ball-Pool.sln`) in the build directory.
    - Ensure `assets/` and `src/shaders/` are copied next to the exe (CMake handles this automatically).
      Example layout after build:
      ```
      build/bin/Debug/
-        Billiards.exe
+        8-Ball-Pool.exe
         assets/
         src/shaders/
      ```
 2. **Run the Game**:
-   - Run directly from Visual Studio (`F5`) or by launching `Billiards.exe` from the build folder.
+   - Run directly from Visual Studio (`F5`) or by launching `8-Ball-Pool.exe` from the build folder.
 
 ## Directory Structure
 ```
-Billiards/
+8-Ball-Pool/
 ├── assets/              # Fonts, HDRs, models, textures
 ├── src/                 # Source code
 │   ├── core/            # Core engine code
@@ -178,6 +178,6 @@ If you have any questions or issues, please contact [konstantinostoutounas@gmail
 
 ---
 
-Thank you for playing the Billiards game! Enjoy your match!
+Thank you for playing the 8-Ball-Pool game! Enjoy your match!
 
 Feel free to update the content as necessary and add any missing details.
