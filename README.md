@@ -1,8 +1,7 @@
 # Billiards
-<img width="1916" height="1025" alt="image" src="https://github.com/user-attachments/assets/68890e74-8e82-429c-a9d8-74cd37a3d89b" />
-<img width="1918" height="1029" alt="Screenshot 2025-08-30 174241" src="https://github.com/user-attachments/assets/88fc012a-a1d1-4da9-8a88-4229b567d543" />
-<img width="1917" height="1031" alt="image" src="https://github.com/user-attachments/assets/03349e3f-2745-4c43-9827-4423504fa66b" />
-
+<img width="1912" height="1033" alt="image" src="https://github.com/user-attachments/assets/6a6c3ff1-e8a2-4898-bb85-82c03b984535" />
+<img width="1914" height="1028" alt="image" src="https://github.com/user-attachments/assets/7e1e97a9-6b8d-41fa-964e-86645ce89fc3" />
+<img width="1911" height="1031" alt="image" src="https://github.com/user-attachments/assets/ef8f8d6f-d299-408a-b3b3-56c54c59c526" />
 
 ## Overview
 This repository contains the source code for a dual-player Billiards game created with OpenGL in Visual Studio. The game provides an immersive billiards experience with realistic graphics, physics, and customizable settings.
