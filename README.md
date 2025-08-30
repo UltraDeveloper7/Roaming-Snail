@@ -102,24 +102,24 @@ cd Billiards
 ```
 **Step 2: Configure with CMake GUI**
 1. Open **CMake GUI**.
-2. **Where is the source code:** set to the repo root (Billiards/).
-3. **Where to build the binaries:** create or select Billiards/build.
-4. Click **Configure** → choose Visual Studio 17 2022, platform x64.
+2. **Where is the source code:** set to the repo root (`Billiards/`).
+3. **Where to build the binaries:** create or select `Billiards/build`.
+4. Click **Configure** → choose Visual Studio 17 2022, platform `x64`.
 5. In **cache entries**, set:
 ```
 CMAKE_TOOLCHAIN_FILE = C:/DEV/vcpkg/scripts/buildsystems/vcpkg.cmake
 ```
-6. Click **Configure** again. CMake will automatically use vcpkg.json to fetch and build all required dependencies.
+6. Click **Configure** again. CMake will automatically use `vcpkg.json` to fetch and build all required dependencies.
 7. Click **Generate** → then Open Project in Visual Studio.
 
 **Step 3: Build**
-- In Visual Studio, select Debug or Release.
+- In Visual Studio, select `Debug` or `Release`.
 - Build the **Billiards** target.
 
 ## Running the Game
 1. **Open the Project**:
    - Open the Visual Studio solution file (`build/Billiards.sln`) in the build directory.
-   - Ensure assets/ and src/shaders/ are copied next to the exe (CMake handles this automatically).
+   - Ensure `assets/` and `src/shaders/` are copied next to the exe (CMake handles this automatically).
      Example layout after build:
      ```
      build/bin/Debug/
@@ -128,7 +128,7 @@ CMAKE_TOOLCHAIN_FILE = C:/DEV/vcpkg/scripts/buildsystems/vcpkg.cmake
         src/shaders/
      ```
 2. **Run the Game**:
-   - Run directly from Visual Studio (F5) or by launching Billiards.exe from the build folder.
+   - Run directly from Visual Studio (`F5`) or by launching `Billiards.exe` from the build folder.
 
 ## Directory Structure
 ```
