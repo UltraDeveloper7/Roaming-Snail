@@ -10,7 +10,7 @@ struct Config final
 	// Window
 	inline static constexpr int width = 1920;
 	inline static constexpr int height = 1080;
-	inline static constexpr const char* const window_name = "Billiards";
+	inline static constexpr const char* const window_name = "8-Ball-Pool";
 
 	// Shadow
 	inline static constexpr int shadow_width = 2048;
