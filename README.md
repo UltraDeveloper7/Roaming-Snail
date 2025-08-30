@@ -95,7 +95,26 @@ Before you begin, ensure you have:
 To play the Billiards game, build and run the project in Visual Studio, then use the controls described above to interact with the game.
 
 ## Building with CMake
+**Step 1: Clone**
+```
+git clone https://github.com/UltraDeveloper7/Billiards.git
+cd Billiards
+```
+**Step 2: Configure with CMake GUI**
+1. Open **CMake GUI**.
+2. **Where is the source code:** set to the repo root (Billiards/).
+3. **Where to build the binaries:** create or select Billiards/build.
+4. Click **Configure** → choose Visual Studio 17 2022, platform x64.
+5. In **cache entries**, set:
+```
+CMAKE_TOOLCHAIN_FILE = C:/DEV/vcpkg/scripts/buildsystems/vcpkg.cmake
+```
+6. Click **Configure** again. CMake will automatically use vcpkg.json to fetch and build all required dependencies.
+7. Click **Generate** → then Open Project in Visual Studio.
 
+**Step 3: Build**
+- In Visual Studio, select Debug or Release.
+- Build the **Billiards** target.
 
 ## Running the Game
 1. **Open the Project**:
