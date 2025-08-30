@@ -1,4 +1,4 @@
-# Billiards
+# 8 Ball Pool
 <img width="1917" height="1032" alt="image" src="https://github.com/user-attachments/assets/65d01a6f-fb76-4309-bee8-b7ea8b9cbef6" />
 <img width="1916" height="1027" alt="image" src="https://github.com/user-attachments/assets/dfebbd5c-f0f7-4379-b602-6f62de0fb701" />
 <img width="1918" height="1033" alt="image" src="https://github.com/user-attachments/assets/5a7922cc-ae50-4096-b5c6-4d2e89cc489c" />
