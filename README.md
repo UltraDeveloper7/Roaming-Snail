@@ -1,5 +1,7 @@
 # Billiards
 <img width="1916" height="1025" alt="image" src="https://github.com/user-attachments/assets/68890e74-8e82-429c-a9d8-74cd37a3d89b" />
+<img width="1918" height="1029" alt="Screenshot 2025-08-30 174241" src="https://github.com/user-attachments/assets/88fc012a-a1d1-4da9-8a88-4229b567d543" />
+<img width="1917" height="1031" alt="image" src="https://github.com/user-attachments/assets/03349e3f-2745-4c43-9827-4423504fa66b" />
 
 
 ## Overview
