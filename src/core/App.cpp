@@ -396,15 +396,17 @@ void App::OnUpdate()
 
 		// Small hollow circle at the contact end (on the cue-ball side), only if we have a real hit
 		if (hitIdx != -1) {
-			const float ringR = Ball::radius_ * 0.25f;       // small, not filled
+			const float ringR = Ball::radius_ * 0.33f;       // small, not filled
 			const float eps = Ball::radius_ * 0.03f;       // pull back a hair to avoid z-fighting
 			glm::vec3 ringCenter = impact - D * eps;
 			ringCenter.y = Ball::radius_;
 			drawCircleXZ(view, proj, ringCenter, ringR, 40, 2.0f, glm::vec3(1.0f));
 		}
 
-		// Yellow predicted *object ball* direction; keep it inside the table
+		// Predicted object-ball direction; color depends on legality
 		if (hitIdx != -1) {
+			const bool legalTarget = world_->IsLegalAimTarget(hitIdx);
+
 			const glm::vec3 C = balls[hitIdx]->translation_;
 			const glm::vec3 objDir = glm::normalize(C - impact);   // line-of-centers
 			const float want = 0.90f;                               // desired preview length
@@ -412,9 +414,13 @@ void App::OnUpdate()
 			float tClipped = clipToTableXZ(C, objDir, want, margin);
 			if (tClipped > 1e-4f) {
 				glm::vec3 endY = C + objDir * tClipped;
-				drawLine3D(view, proj, C, endY, 2.0f, glm::vec3(1.0f, 1.0f, 0.0f));
+				// Yellow if legal, Red if illegal
+				glm::vec3 col = legalTarget ? glm::vec3(1.0f, 1.0f, 0.0f)
+					: glm::vec3(1.0f, 0.1f, 0.1f);
+				drawLine3D(view, proj, C, endY, 2.0f, col);
 			}
 		}
+
 	}
 
 	// ---- text UI pass ----

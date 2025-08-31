@@ -1,6 +1,19 @@
 ﻿#include "../precompiled.h"
 #include "Menu.hpp"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
+static bool IsCapsLockOn() {
+#ifdef _WIN32
+    return (GetKeyState(VK_CAPITAL) & 0x1) != 0; // toggle bit
+#else
+    return false; // TODO: implement for other platforms if needed
+#endif
+}
+
+
 namespace {
     // One source of truth for the help lines
     static const char* kHelpLines[] = {
@@ -400,25 +413,50 @@ void Menu::DrawUiSettingsModal(bool has_started)
             bool e = (cur == GLFW_PRESS && prev[key] == GLFW_RELEASE);
             prev[key] = cur; return e;
             };
+
         const bool shift =
             (glfwGetKey(w, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ||
             (glfwGetKey(w, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
 
-        if (keyEdge(GLFW_KEY_BACKSPACE)) { if (!target.empty()) { target.pop_back(); names_dirty_ = true; } }
-        if (keyEdge(GLFW_KEY_ENTER) || keyEdge(GLFW_KEY_KP_ENTER)) active_input_ = -1;
+        // Use Shift XOR CapsLock toggle state
+        const bool upper = shift ^ IsCapsLockOn();
 
+
+        if (keyEdge(GLFW_KEY_BACKSPACE)) {
+            if (!target.empty()) { target.pop_back(); names_dirty_ = true; }
+        }
+        if (keyEdge(GLFW_KEY_ENTER) || keyEdge(GLFW_KEY_KP_ENTER))
+            active_input_ = -1;
+
+        // Letters A..Z
         for (int k = GLFW_KEY_A; k <= GLFW_KEY_Z; ++k) if (keyEdge(k)) {
-            char c = static_cast<char>('a' + (k - GLFW_KEY_A));
-            if (shift) c = static_cast<char>(std::toupper(c));
+            char c = static_cast<char>((upper ? 'A' : 'a') + (k - GLFW_KEY_A));
             if (target.size() < maxLen) { target.push_back(c); names_dirty_ = true; }
         }
+
+        // Numbers 0..9 (main row)
         for (int k = GLFW_KEY_0; k <= GLFW_KEY_9; ++k) if (keyEdge(k)) {
             char c = static_cast<char>('0' + (k - GLFW_KEY_0));
             if (target.size() < maxLen) { target.push_back(c); names_dirty_ = true; }
         }
-        if (keyEdge(GLFW_KEY_SPACE)) { if (target.size() < maxLen) { target.push_back(' '); names_dirty_ = true; } }
-        if (keyEdge(GLFW_KEY_MINUS)) { if (target.size() < maxLen) { target.push_back(shift ? '_' : '-'); names_dirty_ = true; } }
+
+        // Optional: Numpad digits
+        for (int k = GLFW_KEY_KP_0; k <= GLFW_KEY_KP_9; ++k) if (keyEdge(k)) {
+            char c = static_cast<char>('0' + (k - GLFW_KEY_KP_0));
+            if (target.size() < maxLen) { target.push_back(c); names_dirty_ = true; }
+        }
+
+        // Space
+        if (keyEdge(GLFW_KEY_SPACE)) {
+            if (target.size() < maxLen) { target.push_back(' '); names_dirty_ = true; }
+        }
+
+        // Hyphen/underscore
+        if (keyEdge(GLFW_KEY_MINUS)) {
+            if (target.size() < maxLen) { target.push_back(shift ? '_' : '-'); names_dirty_ = true; }
+        }
     }
+
 
     // --- ALWAYS VISIBLE/ACTIVE below (even if no field is focused) ---
     if (has_started && !rename_gate_open_) {

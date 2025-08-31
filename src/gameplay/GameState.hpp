@@ -95,7 +95,11 @@ public:
 	float ShotClock() const { return shot_clock_; }
 	void SetShotClock(float v) { shot_clock_ = v; }
 
+	// Record a ball number the instant it’s pocketed on THIS shot.
+	void NotePocketedThisShot(int ballNumber);
 
+	// Read-only access for rules logic.
+	const std::vector<int>& PocketedThisShot() const { return pocketed_this_shot_; }
 
 private:
 	std::vector<Player> players_{ Player("Player 1"), Player("Player 2") };
@@ -113,6 +117,7 @@ private:
 	bool cueBallHitOtherBall_ = false;
 	int firstBallContactIndex_ = -1; // -1: none; 8=8ball
 
+	std::vector<int> pocketed_this_shot_; // ball numbers pocketed during this shot
 
 	// groups: -1 unset, 0 solids, 1 stripes
 	int player1_ball_type_ = -1;

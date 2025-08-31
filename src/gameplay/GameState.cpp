@@ -77,8 +77,13 @@ void GameState::MarkCueContact(int nonCueBallIndex) {
 void GameState::ClearShotTransients() {
 	cueBallHitOtherBall_ = false;
 	firstBallContactIndex_ = -1;
+	rail_after_contact_ = false;
+	pocketed_this_shot_.clear();
 }
 
+void GameState::NotePocketedThisShot(int ballNumber) {
+	pocketed_this_shot_.push_back(ballNumber);
+}
 
 void GameState::SetMessage(const std::string& msg, float seconds) {
 	current_message_ = msg;
@@ -91,7 +96,6 @@ void GameState::AssignGroupFromBallNumber(int ballNumber) {
 	const bool stripes = (ballNumber >= 9 && ballNumber <= 15);
 	if (!solids && !stripes) return;
 
-
 	if (current_player_index_ == 0) {
 		player1_ball_type_ = solids ? 0 : 1;
 		player2_ball_type_ = solids ? 1 : 0;
@@ -100,8 +104,18 @@ void GameState::AssignGroupFromBallNumber(int ballNumber) {
 		player2_ball_type_ = solids ? 0 : 1;
 		player1_ball_type_ = solids ? 1 : 0;
 	}
+
+	// Table no longer open
 	is_first_shot_ = false;
+
+	// Show assignment message (uses current names if set)
+	const std::string shooter = players_[current_player_index_].GetName();
+	const std::string opponent = players_[(current_player_index_ + 1) % players_.size()].GetName();
+	const char* shooterGrp = solids ? "solids" : "stripes";
+	const char* oppGrp = solids ? "stripes" : "solids";
+	SetMessage(shooter + " takes " + shooterGrp + ". " + opponent + " gets " + oppGrp + ".", 1.6f);
 }
+
 
 void GameState::MarkRailContact() { rail_after_contact_ = true; }
 bool GameState::RailAfterContact() const { return rail_after_contact_; }

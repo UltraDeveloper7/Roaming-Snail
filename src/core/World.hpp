@@ -23,8 +23,8 @@ public:
 	void Draw(const std::shared_ptr<Shader>& shader) const;
 
 	// Initialization & Reset
-	void Init() const;
-	void Reset() const;
+	void Init() ;
+	void Reset() ;
 
 	std::shared_ptr<Cue> GetCue() const { return cue_; }
 
@@ -59,6 +59,11 @@ public:
 	// expose balls for rules module
 	const std::vector<std::shared_ptr<Ball>>& GetBalls() const { return balls_; }
 
+	// True if the current player is allowed to *first-contact* ball 'hitIdx'
+	bool IsLegalAimTarget(int hitIdx) const;
+
+	void NotePocketedThisShot(int ballNumber);
+	GameState& State();           // optional helper if you want direct access
 
 private:
 	void InitializeLights();
@@ -78,6 +83,7 @@ private:
 	std::vector<std::shared_ptr<Light>> lights_{};
 	std::shared_ptr<Ceiling> ceiling_ = nullptr;
 
+	std::array<bool, 16> wasDrawn_{ };   // track drawn state per ball (1..15)
 
 	GameState state_{};
 	GameRules rules_{};

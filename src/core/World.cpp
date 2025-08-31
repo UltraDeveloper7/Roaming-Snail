@@ -3,6 +3,8 @@
 #include "../Config.hpp"
 #include "../interface/Camera.hpp"
 #include "../core/Loader.hpp"
+#include "../objects/Ball.hpp"
+#include "../gameplay/GameState.hpp"
 #include "Logger.hpp"
 
 
@@ -151,13 +153,13 @@ void World::Update(float dt, bool in_game)
 		}
 	}
 
-
-	static bool wasMoving = false;
-	bool nowMoving = AreBallsInMotion();
-	if (!wasMoving && nowMoving) {
-		state_.StartNewTurn();
+	// NEW — start of shot happens exactly when we first see movement
+	// and we are NOT already in a shot (i.e., rules aren't pending yet).
+	bool movingNow = AreBallsInMotion();
+	if (movingNow && !state_.CheckRulesPending()) {
+		state_.StartNewTurn();              // clears transients ONCE per shot
+		state_.SetCheckRulesPending(true);  // we are now "in a shot"
 	}
-	wasMoving = nowMoving;
 
 
 	for (int i = 0; i < (int)balls_.size(); ++i) {
@@ -177,15 +179,22 @@ void World::Update(float dt, bool in_game)
 		HandleBallsCollision(i);
 	}
 
+	// --- record pocket events for THIS shot (edge: drawn -> not drawn) ---
+	for (int i = 1; i <= 15; ++i) {
+		bool nowDrawn = balls_[i]->IsDrawn();
+		if (wasDrawn_[i] && !nowDrawn) {
+			state_.NotePocketedThisShot(balls_[i]->GetNumber());
+		}
+		wasDrawn_[i] = nowDrawn;
+	}
+
 
 	if (!AreBallsInMotion()) {
 		if (state_.CheckRulesPending()) {
+			// pocket list was filled during this shot -> safe to evaluate
 			rules_.EvaluateEndOfShot(balls_, state_);
-			state_.SetCheckRulesPending(false);
+			state_.SetCheckRulesPending(false);  // shot closed
 		}
-	}
-	else {
-		state_.SetCheckRulesPending(true);
 	}
 }
 
@@ -194,8 +203,62 @@ bool World::AreBallsInMotion() const {
 	for (const auto& b : balls_) if (b->IsInMotion()) return true; return false;
 }
 
+// small local helper : 0 = solids, 1 = stripes, -1 = neither(cue / 8)
+static int BallTypeFromNumber(int num) {
+	if (num >= 1 && num <= 7)  return 0;
+	if (num >= 9 && num <= 15) return 1;
+	return -1; // cue (0) or eight (8)
+}
 
-void World::Init() const {
+bool World::IsLegalAimTarget(int hitIdx) const
+{
+	// Defensive: out of range or not actually on table => don't warn
+	if (hitIdx <= 0 || hitIdx >= static_cast<int>(balls_.size())) return true;
+	if (!balls_[hitIdx]->IsDrawn()) return true;
+
+	const GameState& s = state_;           // your game state
+	const bool onBreak = s.IsAfterBreak();
+	const bool tableOpen = s.IsFirstShot(); // “open table” after break until groups assigned
+	const int  curGroup = s.CurrentPlayerGroup(); // -1 when not assigned yet
+
+	// On the break: any first contact is allowed (color = yellow)
+	if (onBreak) return true;
+
+	const int num = balls_[hitIdx]->GetNumber();
+
+	// Open table (post-break before assignment): everything but the 8 is allowed
+	if (tableOpen) return (num != 8);
+
+	// Defensive: groups should be assigned if tableOpen==false, but guard anyway
+	if (curGroup == -1) return true;
+
+	// If aiming at the 8: only legal if your group is completely cleared
+	if (num == 8) {
+		bool cleared = true;
+		for (size_t k = 1; k < balls_.size(); ++k) {
+			if (!balls_[k]->IsDrawn()) continue;           // pocketed
+			const int n = balls_[k]->GetNumber();
+			if (n == 0 || n == 8) continue;                // cue / eight
+			if (BallTypeFromNumber(n) == curGroup) {       // still one of yours left
+				cleared = false; break;
+			}
+		}
+		return cleared;
+	}
+
+	// Normal case: legal iff ball type matches your group
+	return BallTypeFromNumber(num) == curGroup;
+}
+
+void World::NotePocketedThisShot(int ballNumber) {
+	state_.NotePocketedThisShot(ballNumber);
+}
+
+GameState& World::State() {
+	return state_;
+}
+
+void World::Init() {
 	balls_[0]->Translate(glm::vec3(0.8f, 0.0f, 0.0f));
 	cue_->translation_ = glm::vec3(0.0f);
 	cue_->angle_ = 0.0f;
@@ -204,6 +267,8 @@ void World::Init() const {
 
 
 	balls_[1]->Translate(glm::vec3(-0.8f + 2.0f * glm::root_three<float>() * Ball::radius_, 0.0f, 0.0f));
+
+	wasDrawn_.fill(true);
 
 
 	glm::vec3 temp = balls_[1]->translation_;
@@ -219,9 +284,10 @@ void World::Init() const {
 }
 
 
-void World::Reset() const {
+void World::Reset() {
 	for (const auto& ball : balls_) { ball->TakeFromHole(); ball->SetDrawn(true); }
 	Init();
+	wasDrawn_.fill(true);
 }
 
 
@@ -268,14 +334,21 @@ void World::HandleBallsCollision(const int number)
 void World::HandleHolesFall(const int number) 
 {
 	if (!AreBallsInMotion()) {
-		// pocket the ball
-		balls_[number]->SetDrawn(false);
+		// about to remove it from the table -> record the pocket ONCE
+		if (balls_[number]->IsDrawn()) {
+			// cue ball (0) is handled as a foul later; we still mark others
+			if (number != 0) {
+				state_.NotePocketedThisShot(balls_[number]->GetNumber());
+			}
+			balls_[number]->SetDrawn(false);
+			if (number >= 1 && number <= 15) {
+				wasDrawn_[number] = false;   // prevent double edge later
+			}
+		}
 
-		// if it’s the cue ball (index 0) → foul + Ball in Hand
 		if (number == 0) {
 			state_.SetBallInHand(true);
 			state_.SetMessage("Foul! Scratch — ball in hand.", 1.2f);
-			// (we don’t switch turns here; end-of-shot logic will do it)
 		}
 		return;
 	}

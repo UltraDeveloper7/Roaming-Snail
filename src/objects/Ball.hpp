@@ -7,6 +7,8 @@ class Ball final : public Object
 public:
 	explicit Ball(int number);
 
+	int GetNumber() const { return number_; }
+
 	void Shot(glm::vec3 power, glm::vec2 spin);
 	void Roll(float dt);
 	void CollideWith(const std::shared_ptr<Ball>& ball);
@@ -25,6 +27,8 @@ public:
 	inline static constexpr float radius_{ 0.0286f };
 
 private:
+	int number_;
+
 	bool is_in_hole_{false};
 	bool is_drawn_{true};
 	glm::vec3 velocity_{ 0.0f };

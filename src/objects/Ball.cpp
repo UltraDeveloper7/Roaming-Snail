@@ -2,7 +2,7 @@
 #include "Ball.hpp"
 #include "../core/Loader.hpp"
 
-Ball::Ball(const int number) : Object(Config::ball_path), spin_(0.0f, 0.0f)
+Ball::Ball(const int number) : Object(Config::ball_path), spin_(0.0f, 0.0f), number_(number)
 {
     const auto path = std::filesystem::current_path() / ("assets/textures/ball" + std::to_string(number) + ".jpg");
     materials_[0]->diffuse_texture = Loader::LoadTexture(path.string());
