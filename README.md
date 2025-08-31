@@ -73,7 +73,7 @@ Before you begin, ensure you have:
 1. **Visual Studio 2022** (with C++ Desktop Development tools installed).  
 2. **CMake** ≥ 3.24.  
 3. **vcpkg** installed locally (and bootstrapped at least once):
-   ```powershell
+   ```bash
    git clone https://github.com/microsoft/vcpkg C:/DEV/vcpkg
    cd C:/DEV/vcpkg
    .\bootstrap-vcpkg.bat
