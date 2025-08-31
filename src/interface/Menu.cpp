@@ -197,20 +197,36 @@ void Menu::DrawMainMenu(bool modalOpen, int winW, int winH,
         return pressed && (selected == logicalIndex);
         };
 
-    // Play
+    // --- Play (center) unchanged ---
     const bool playSelected = (selected == 0);
     if (!modalOpen) {
         bool playClicked = button(0.5f, 0.70f, "Play", Ui(1.05f), Alignment::CENTER, playSelected, nullptr, nullptr) || isEnterOn(0);
         if (playClicked) play_clicked_ = true;
     }
 
+    // --- Bottom-left rows (Quick Setup, How to Play) with pixel spacing ---
+    const float scaleQuick = Ui(0.85f);
+    const float scaleHelp = Ui(0.90f);
+    const float hQuick_px = estimateHeightPx(scaleQuick);
+    const float hHelp_px = estimateHeightPx(scaleHelp);
+
+    const float baseH_px = std::max(hQuick_px, hHelp_px);
+    const float gap_px = baseH_px * 0.60f;          // nice breathing room
+    const float margin_px = baseH_px * 1.20f;          // distance from bottom
+
+    auto vpx = [&](float px) { return px / static_cast<float>(height_); };
+
+    // centers from bottom upward
+    const float helpV = vpx(margin_px + hHelp_px * 0.5f);
+    const float quickV = vpx(margin_px + hHelp_px + gap_px + hQuick_px * 0.5f);
+
     // Quick Setup (opens modal)
     if (!settings_open_) {
         const bool qsSelected = (selected == 1);
         const char* dd = settings_open_ ? "v" : ">";
         bool qsClicked = !modalOpen &&
-            button(0.10f, 0.18f, std::string(dd) + "  Quick Setup", 
-                Ui(0.85f), Alignment::LEFT, qsSelected, nullptr, nullptr);
+            button(0.10f, quickV, std::string(dd) + "  Quick Setup",
+                scaleQuick, Alignment::LEFT, qsSelected, nullptr, nullptr);
         if (qsClicked || isEnterOn(1)) { settings_open_ = true; selected = 1; }
     }
 
@@ -218,11 +234,12 @@ void Menu::DrawMainMenu(bool modalOpen, int winW, int winH,
     if (!help_open_) {
         const bool helpSel = (selected == 2);
         bool helpClicked = !modalOpen &&
-            button(0.10f, 0.10f, std::string(ICON_INFO) + "  How to Play",
-                Ui(0.90f), Alignment::LEFT, helpSel, nullptr, nullptr);
+            button(0.10f, helpV, std::string(ICON_INFO) + "  How to Play",
+                scaleHelp, Alignment::LEFT, helpSel, nullptr, nullptr);
         if (helpClicked || isEnterOn(2)) { help_open_ = true; selected = 2; }
     }
 }
+
 
 void Menu::DrawPauseMenu(bool modalOpen, int winW, int winH,
     float mouseX, float mouseY, int curEnter,
@@ -235,36 +252,44 @@ void Menu::DrawPauseMenu(bool modalOpen, int winW, int winH,
         };
 
     if (!modalOpen) {
+        // Top "Resume" stays around the same anchor
         const bool resumeSel = (selected == 0);
-        bool resumeClicked = button(0.5f, 0.84f, "Resume game", Ui(1.05f), Alignment::CENTER, resumeSel, nullptr, nullptr) || isEnterOn(0);
+        bool resumeClicked = button(0.5f, 0.84f, "Resume game", Ui(1.05f),
+            Alignment::CENTER, resumeSel, nullptr, nullptr) || isEnterOn(0);
         if (resumeClicked) play_clicked_ = true;
 
-        const float startV = 0.64f, stepV = 0.10f;
+        // The rest: pixel-derived vertical step
+        const float itemScale = Ui(0.90f);
+        const float step_px = estimateHeightPx(itemScale) * 1.25f;
+        auto vpx = [&](float px) { return px / static_cast<float>(height_); };
+
+        const float startV = 0.64f;         // keep the block centered near where it used to be
+        const float stepV = vpx(step_px);  // convert pixels to NDC v
 
         const bool resetSel = (selected == 1);
-        if (button(0.5f, startV + 0 * stepV, "Reset game", Ui(0.90f), Alignment::CENTER, resetSel, nullptr, nullptr) || isEnterOn(1)) {
+        if (button(0.5f, startV + 0 * stepV, "Reset game", itemScale, Alignment::CENTER, resetSel, nullptr, nullptr) || isEnterOn(1)) {
             reset_clicked_ = true;
-            rename_gate_open_ = true;  // allow editing names this pause session
+            rename_gate_open_ = true;
         }
 
         const bool qsSel = (selected == 2);
         const char* dd = settings_open_ ? "v" : ">";
-        if (button(0.5f, startV - 1 * stepV, std::string(dd) + "  Quick Setup", Ui(0.90f), Alignment::CENTER, qsSel, nullptr, nullptr) || isEnterOn(2)) {
+        if (button(0.5f, startV - 1 * stepV, std::string(dd) + "  Quick Setup", itemScale, Alignment::CENTER, qsSel, nullptr, nullptr) || isEnterOn(2)) {
             settings_open_ = true; selected = 2;
         }
 
         const bool helpSel = (selected == 3);
-        if (button(0.5f, startV - 2 * stepV, std::string(ICON_INFO) + "  How to Play",
-            Ui(0.90f), Alignment::CENTER, helpSel, nullptr, nullptr) || isEnterOn(3)) {
+        if (button(0.5f, startV - 2 * stepV, std::string(ICON_INFO) + "  How to Play", itemScale, Alignment::CENTER, helpSel, nullptr, nullptr) || isEnterOn(3)) {
             help_open_ = true; selected = 3;
         }
 
         const bool exitSel = (selected == 4);
-        if (button(0.5f, startV - 3 * stepV, "Exit game", Ui(0.90f), Alignment::CENTER, exitSel, nullptr, nullptr) || isEnterOn(4)) {
+        if (button(0.5f, startV - 3 * stepV, "Exit game", itemScale, Alignment::CENTER, exitSel, nullptr, nullptr) || isEnterOn(4)) {
             exit_clicked_ = true;
         }
     }
 }
+
 
 
 void Menu::DrawQuickSetupModal(int winW, int winH, float mouseX, float mouseY, bool has_started)
@@ -366,21 +391,33 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float mouseX, float mouseY, b
 
 void Menu::DrawHelpModal(bool has_started)
 {
-    AddText(0.5f, 0.62f, std::string(ICON_INFO) + "  How to Play",
-        Ui(1.1f), Alignment::CENTER, true);
+    const float titleScale = Ui(1.1f);
+    const float lineScale = Ui(0.75f);
+    const float closeScale = Ui(0.8f);
 
+    auto vpx = [&](float px) { return px / static_cast<float>(height_); };
+    const float lineH_px = estimateHeightPx(lineScale);
+    const float gap_px = lineH_px * 1.10f;
 
-    RenderHelpBlock(*this, /*u*/0.5f, /*vTop*/0.56f, Alignment::CENTER,
-        Ui(0.75f), /*lineGap*/0.045f);
+    const float headV = 0.62f;
+    const float topV = 0.56f;
 
-    if (button(0.5f, 0.56f - 7 * 0.045f - 0.05f, "Close [Esc]", Ui(0.8f), Alignment::CENTER, false, nullptr, nullptr)) {
+    AddText(0.5f, headV, std::string(ICON_INFO) + "  How to Play",
+        titleScale, Alignment::CENTER, true);
+
+    // list, using pixel-derived gap
+    RenderHelpBlock(*this, /*u*/0.5f, /*vTop*/topV, Alignment::CENTER,
+        lineScale, /*lineGap*/vpx(gap_px));
+
+    // place Close right under the block
+    const float closeV = topV - vpx(gap_px) * kHelpCount - vpx(lineH_px * 0.90f);
+    if (button(0.5f, closeV, "Close [Esc]", closeScale, Alignment::CENTER, false, nullptr, nullptr)) {
         help_open_ = false;
         selected_ = has_started ? 3 : 2;
     }
 
     static int prevEscHelp = GLFW_RELEASE;
-    GLFWwindow* w = glfwGetCurrentContext();
-    int kEsc = glfwGetKey(w, GLFW_KEY_ESCAPE);
+    int kEsc = glfwGetKey(glfwGetCurrentContext(), GLFW_KEY_ESCAPE);
     if (kEsc == GLFW_PRESS && prevEscHelp == GLFW_RELEASE) {
         help_open_ = false;
         selected_ = has_started ? 3 : 2;
@@ -388,10 +425,17 @@ void Menu::DrawHelpModal(bool has_started)
     prevEscHelp = kEsc;
 }
 
+
 void Menu::DrawSettingsIcon(int /*winW*/, int /*winH*/)
 {
-    // Shown only when ui_settings_open_ == false (caller guards this)
-    if (button(0.97f, 0.06f, ICON_SETTINGS, Ui(1.1f), Alignment::RIGHT, false, nullptr, nullptr)) {
+    const float iconScale = Ui(1.1f);
+    const float iconH_px = estimateHeightPx(iconScale);
+    auto vpx = [&](float px) { return px / static_cast<float>(height_); };
+
+    // center of the icon row a bit above the bottom (margin ~ icon height)
+    const float v = vpx(iconH_px * 1.1f);
+
+    if (button(0.97f, v, ICON_SETTINGS, iconScale, Alignment::RIGHT, false, nullptr, nullptr)) {
         ui_settings_open_ = true;
         active_input_ = -1;
     }
@@ -400,38 +444,49 @@ void Menu::DrawSettingsIcon(int /*winW*/, int /*winH*/)
 
 void Menu::DrawUiSettingsModal(bool has_started)
 {
-    // More vertical breathing room (extra spacing everywhere)
-    const float headV = 0.70f;          // title
-    const float row1V = headV - 0.09f; // UI scale presets
-    const float guideV = row1V - 0.09f;  // Aiming guide (more gap below the scale)
-    const float row2V = guideV - 0.11f; // Player 1  (extra gap under aiming row)
-    const float row3V = row2V - 0.09f;  // Player 2
-    const float hintV = row3V - 0.08f;  // “Names are editable…” (shown during pause)
-    const float closeV = hintV - 0.08f;  // Close [Esc] (extra gap below the hint)
+    // --- dynamic, pixel-based spacing tied to current font size ---
+    auto vpx = [&](float px) { return px / static_cast<float>(height_); };
 
+    const float titleScale = Ui(1.10f);
+    const float rowScale = Ui(0.95f);
+    const float cbScale = Ui(0.90f);
+
+    // one line height at current scale
+    const float lineH_px = estimateHeightPx(rowScale);
+
+    // gap between rows ~ 1.25 line-height
+    const float gap_px = lineH_px * 1.25f;
+
+    const float headV = 0.70f;                 // anchor in NDC (keep your title anchor)
+    const float row1V = headV - vpx(gap_px);
+    const float guideV = row1V - vpx(gap_px);
+    const float row2V = guideV - vpx(gap_px * 1.20f); // a bit more gap under guide
+    const float row3V = row2V - vpx(gap_px);
+    const float hintV = row3V - vpx(gap_px * 0.90f);
+    const float closeV = hintV - vpx(gap_px);
 
     AddText(0.5f, headV, std::string(ICON_SETTINGS) + "  Settings",
-        Ui(1.1f), Alignment::CENTER, true);
+        titleScale, Alignment::CENTER, true);
 
 
-    // --- UI Scale presets (50/75/100) laid out by measured width with fixed px gap ---
+    // --- UI Scale presets (50/75/100) ---
     struct Opt { const char* txt; float val; };
     static constexpr Opt kOpts[] = { {"50%",0.50f}, {"75%",0.75f}, {"100%",1.00f} };
     static constexpr int kOptCount = 3;
 
-    const float cbScale = Ui(0.90f);
-    const float gapPx = 36.0f * ui_scale_; // consistent physical gap
+    const float colGapPx = lineH_px * 0.60f;  // gap between columns ~0.6 line-height
+
     std::string labels[kOptCount];
-    float widths[kOptCount];
+    float widths[kOptCount] = { 0 };
     float totalPx = 0.0f;
 
     for (int i = 0; i < kOptCount; ++i) {
         const bool on = std::fabs(ui_scale_ - kOpts[i].val) < 0.001f;
         labels[i] = std::string(on ? "[x] " : "[ ] ") + kOpts[i].txt;
-        widths[i] = estimateWidthPx(labels[i], cbScale) * ui_scale_;
+        widths[i] = estimateWidthPx(labels[i], cbScale); // <-- no extra * ui_scale_
         totalPx += widths[i];
     }
-    totalPx += gapPx * (kOptCount - 1);
+    totalPx += colGapPx * (kOptCount - 1);
 
     float x = 0.5f * width_ - 0.5f * totalPx;  // left edge so the whole row is centered
     for (int i = 0; i < kOptCount; ++i) {
@@ -440,11 +495,12 @@ void Menu::DrawUiSettingsModal(bool has_started)
         if (button(centerU, row1V, labels[i], cbScale, Alignment::CENTER, on, nullptr, nullptr)) {
             ui_scale_ = kOpts[i].val;
         }
-        x += widths[i] + gapPx;
+        x += widths[i] + colGapPx;
     }
 
+
     // --- Aiming guideline toggle ---
-    const std::string gLabel = std::string(show_guideline_ ? "[x] " : "[ ] ") + "Aiming guide";
+    const std::string gLabel = std::string(show_guideline_ ? "[x] " : "[ ] ") + "Guideline";
     if (button(0.5f, guideV, gLabel, Ui(0.90f), Alignment::CENTER, show_guideline_, nullptr, nullptr)) {
         show_guideline_ = !show_guideline_;
     }
@@ -463,14 +519,16 @@ void Menu::DrawUiSettingsModal(bool has_started)
 
             if (!canEditNames) return;
 
-            const float labelW = estimateWidthPx(label, Ui(0.95f)) * ui_scale_;
-            const float fieldW = std::max(240.0f * ui_scale_, estimateWidthPx("MMMMMMMMMMMMMMMM", Ui(0.95f)) * ui_scale_);
+            const float labelW = estimateWidthPx(label, Ui(0.95f));  // no * ui_scale_
+            const float fieldW = std::max(240.0f * ui_scale_,       // min width scales with UI
+                estimateWidthPx("MMMMMMMMMMMMMMMM", Ui(0.95f)));    // no * ui_scale_
             const float pxMid = 0.5f * width_;
             const float x0 = pxMid - (labelW + fieldW) * 0.5f + labelW;
             const float x1 = x0 + fieldW;
             const float y = v * height_;
-            const float h = estimateHeightPx(Ui(0.95f)) * ui_scale_;
+            const float h = estimateHeightPx(Ui(0.95f));             // no * ui_scale_
             const float y0 = y - h * 0.5f, y1 = y + h * 0.5f;
+
 
             if (mouse_edge_down_ && mouse_x_ >= x0 && mouse_x_ <= x1 && mouse_y_ >= y0 && mouse_y_ <= y1) {
                 active_input_ = fieldIndex;
@@ -614,5 +672,5 @@ void Menu::AddText(const float u, const float v, const std::string& text,
     const float scale, Alignment alignment, const bool selected)
 {
     // multiply the per-item scale; TextRenderer already multiplies this into its font_scale_
-    texts_.emplace_back(u * width_, v * height_, text, scale * ui_scale_, alignment, selected);
+    texts_.emplace_back(u * width_, v * height_, text, scale, alignment, selected);
 }

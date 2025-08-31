@@ -242,6 +242,20 @@ namespace {
 		return std::max(0.0f, tMax);
 	}
 
+	// Clip the ray O + t*dir against inner table bounds (XZ), keeping a margin
+	static float clipRayToTableXZ(const glm::vec3& O, const glm::vec3& dir,
+		float tDesired, float margin)
+	{
+		float tMax = tDesired;
+
+		if (dir.x > 0.0f)  tMax = std::min(tMax, (Table::bound_x_ - margin - O.x) / dir.x);
+		if (dir.x < 0.0f)  tMax = std::min(tMax, (-Table::bound_x_ + margin - O.x) / dir.x);
+		if (dir.z > 0.0f)  tMax = std::min(tMax, (Table::bound_z_ - margin - O.z) / dir.z);
+		if (dir.z < 0.0f)  tMax = std::min(tMax, (-Table::bound_z_ + margin - O.z) / dir.z);
+
+		return std::max(0.0f, tMax);
+	}
+
 } // anonymous namespace
 
 // -------------------------------------------------------------
@@ -390,37 +404,39 @@ void App::OnUpdate()
 
 		glDisable(GL_DEPTH_TEST); // HUD-style overlay
 
-		// Main white line: cue-ball to first contact (or a short preview if nothing hit)
-		glm::vec3 impact = (hitIdx != -1) ? (O + D * bestT) : (O + D * 2.0f);
+		// Clip the white line so it never crosses cushions
+		const float margin = 0.025f; // keep a small distance from cushions
+		float tBound = clipRayToTableXZ(O, D, 1000.0f, margin); // "far" but clipped to table
+		float tLine = (hitIdx != -1) ? std::min(bestT, tBound) : tBound;
+
+		glm::vec3 impact = O + D * tLine;
 		drawLine3D(view, proj, O, impact, 2.0f, glm::vec3(1.0f));
 
-		// Small hollow circle at the contact end (on the cue-ball side), only if we have a real hit
-		if (hitIdx != -1) {
-			const float ringR = Ball::radius_ * 0.33f;       // small, not filled
-			const float eps = Ball::radius_ * 0.03f;       // pull back a hair to avoid z-fighting
+		// Larger hollow circle at contact (only if a real hit and still inside bounds)
+		if (hitIdx != -1 && tLine > 1e-4f) {
+			const float ringR = Ball::radius_ * 0.60f;   // enlarged ring
+			const float eps = Ball::radius_ * 0.03f;   // pull back slightly to avoid z-fighting
 			glm::vec3 ringCenter = impact - D * eps;
 			ringCenter.y = Ball::radius_;
-			drawCircleXZ(view, proj, ringCenter, ringR, 40, 2.0f, glm::vec3(1.0f));
+			drawCircleXZ(view, proj, ringCenter, ringR, 64, 3.0f, glm::vec3(1.0f)); // more segments, thicker line
 		}
 
-		// Predicted object-ball direction; color depends on legality
+		// Predicted object-ball direction; color depends on legality (still clipped to table)
 		if (hitIdx != -1) {
 			const bool legalTarget = world_->IsLegalAimTarget(hitIdx);
 
 			const glm::vec3 C = balls[hitIdx]->translation_;
 			const glm::vec3 objDir = glm::normalize(C - impact);   // line-of-centers
-			const float want = 0.90f;                               // desired preview length
-			const float margin = 0.025f;                            // stay away from cushions
-			float tClipped = clipToTableXZ(C, objDir, want, margin);
+			const float want = 0.90f;                            // desired preview length
+			const float margin2 = 0.025f;                          // same cushion distance
+			float tClipped = clipToTableXZ(C, objDir, want, margin2);
 			if (tClipped > 1e-4f) {
 				glm::vec3 endY = C + objDir * tClipped;
-				// Yellow if legal, Red if illegal
 				glm::vec3 col = legalTarget ? glm::vec3(1.0f, 1.0f, 0.0f)
 					: glm::vec3(1.0f, 0.1f, 0.1f);
 				drawLine3D(view, proj, C, endY, 2.0f, col);
 			}
 		}
-
 	}
 
 	// ---- text UI pass ----
@@ -539,7 +555,7 @@ void App::Load()
 	world_->Init();
 
 	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
+	glDepthFunc(GL_LESS);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glEnable(GL_MULTISAMPLE);
 	glViewport(0, 0, window_->GetWidth(), window_->GetHeight());

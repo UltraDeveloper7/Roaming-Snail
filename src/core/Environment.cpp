@@ -34,6 +34,21 @@ prefilter_shader_(std::make_unique<Shader>(Config::cubemap_vertex_path, Config::
     RenderIrradianceMap(capture_projection, capture_views);
 
     prefilter_map_ = std::make_unique<Texture>(Config::prefilter_scale, true);
+    // Ensure all mip levels exist so we can render into them
+    glBindTexture(GL_TEXTURE_CUBE_MAP, prefilter_map_->GetId());
+    for (unsigned mip = 0; mip < Config::max_mip_levels; ++mip) {
+        unsigned w = (unsigned)(Config::prefilter_scale * std::pow(0.5f, (float)mip));
+        unsigned h = w;
+        for (unsigned face = 0; face < 6; ++face) {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, mip,
+                GL_RGB16F, (GLsizei)w, (GLsizei)h, 0, GL_RGB, GL_FLOAT, nullptr);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     RenderPrefilterMap(capture_projection, capture_views);
 
     brdf_lut_ = std::make_unique<Texture>(nullptr, Config::cube_map_size, Config::cube_map_size);
@@ -52,6 +67,10 @@ void Environment::Prepare() const
 
 void Environment::Draw(const std::shared_ptr<Shader>& background_shader) const
 {
+    // Skybox should pass when depth == 1.0
+    GLint oldDepthFunc; glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFunc);
+	glDepthFunc(GL_LEQUAL); // skybox depth trick
+
     background_shader->Bind();
     glActiveTexture(GL_TEXTURE1);
     cube_map_->Bind();
@@ -61,6 +80,9 @@ void Environment::Draw(const std::shared_ptr<Shader>& background_shader) const
     cube_->Draw();
     cube_->Unbind();
     background_shader->Unbind();
+
+    // Restore normal depth test for the rest of the frame
+    glDepthFunc(oldDepthFunc);
 }
 
 void Environment::CreateBuffers()
@@ -239,7 +261,7 @@ void Environment::RenderPrefilterMap(const glm::mat4& capture_projection, const 
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
     prefilter_shader_->Bind();
-    prefilter_shader_->SetInt(0, "environmentMap");
+    prefilter_shader_->SetInt(1, "environmentMap");
     prefilter_shader_->SetMat4(capture_projection, "projection");
 
     glActiveTexture(GL_TEXTURE1);

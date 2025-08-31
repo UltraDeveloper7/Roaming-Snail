@@ -35,13 +35,14 @@ void Cue::HandleShot(const std::shared_ptr<Ball>& white_ball, const float dt)
 
     // Rotate cue around the ball (left/right) — only when we haven't changed power this frame
     if (!power_changed_) {
+        const float dtheta = Config::cue_rot_speed * dt; // radians this frame
         if (kLeft) {
-            Rotate(cue_rot_axis, dt);
-            Translate(dt * Ball::radius_ * cue_dir);
+            Rotate(cue_rot_axis, dtheta);
+            Translate(Ball::radius_ * dtheta * cue_dir);   // arc length = R * dtheta
         }
         if (kRight) {
-            Rotate(cue_rot_axis, -dt);
-            Translate(-dt * Ball::radius_ * cue_dir);
+            Rotate(cue_rot_axis, -dtheta);
+            Translate(-Ball::radius_ * dtheta * cue_dir);
         }
     }
 

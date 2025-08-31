@@ -88,6 +88,7 @@ struct Config final
 
 	// Physics
 	inline static float power_coeff = 10.0f;
+	inline static float cue_rot_speed = 0.45f; // radians/sec (~34°/s). Tweak 0.35–0.85
 	inline static float velocity_multiplier = 0.985f;
 	inline static float spin_damping = 0.95f;          // Damping for spin
 	inline static float spin_coefficient = 0.03f;     // Controls spin effect magnitude

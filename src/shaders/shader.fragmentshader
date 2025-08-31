@@ -145,7 +145,12 @@ float ShadowCalculation(int light, vec3 worldPos, vec3 N, vec3 L)
 void main()
 {
     vec3 baseColor = pow(material.diffuse, vec3(2.2));
-    float ao = material.ao.r;
+
+    // AO should never default to 0; if no AO map, use 1.0
+    float ao = 1.0;
+    if (material.hasAoMap)
+        ao = texture(material.aoMap, TexCoords).r;
+
     float roughness = material.roughness;
     float metallic = material.metallic;
     vec3 N = normalize(Normal);
