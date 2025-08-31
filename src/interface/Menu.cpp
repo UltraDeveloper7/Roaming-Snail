@@ -118,9 +118,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     const bool releaseEdge = (curMouse == GLFW_RELEASE && prevMouse == GLFW_PRESS);
 
     // fire at most once per 100 ms
-    const bool edgeOk = (pressEdge || releaseEdge) && (now - lastClickTime > 0.10);
-    mouse_edge_down_ = edgeOk;
-    if (edgeOk) lastClickTime = now;
+    mouse_edge_down_ = (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
 
     const bool modalOpen = settings_open_ || help_open_;
 
@@ -279,31 +277,54 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
 
         AddText(panelU, headV, "Quick Setup  v", 0.9f, Alignment::LEFT, true);
 
+
         const float lineScale = 0.8f;
 
-        // Strike force
+        // -------- Strike force (hover highlight; arrows only change) --------
         std::string sf = std::format("Strike force: {:.2f}", Config::power_coeff);
-        AddText(panelU, row1V, sf, lineScale, Alignment::LEFT, (focus == 0));
         float sfWidthPx = estimateWidthPx(sf, lineScale);
-        float leftU = (panelU * winW + sfWidthPx + 18.0f) / winW;
-        float rightU = (panelU * winW + sfWidthPx + 48.0f) / winW;
+        const float sfX0 = panelU * winW;
+        const float sfX1 = sfX0 + sfWidthPx;
+
+        const float rowH = estimateHeightPx(lineScale);
+        const float row1Y0 = row1V * winH - rowH * 0.5f;
+        const float row1Y1 = row1V * winH + rowH * 0.5f;
+
+        const bool row1Hover = (mouseX >= sfX0 && mouseX <= sfX1 && mouseY >= row1Y0 && mouseY <= row1Y1);
+        if (row1Hover) focus = 0;
+        AddText(panelU, row1V, sf, lineScale, Alignment::LEFT, (focus == 0) || row1Hover);
+
+        // Inline arrows (ONLY these change the value)
+        float leftU = (sfX0 + sfWidthPx + 18.0f) / winW;
+        float rightU = (sfX0 + sfWidthPx + 48.0f) / winW;
         if (button(leftU, row1V, "<", lineScale, Alignment::CENTER, false, nullptr, nullptr))
             Config::power_coeff -= 0.05f;
         if (button(rightU, row1V, ">", lineScale, Alignment::CENTER, false, nullptr, nullptr))
             Config::power_coeff += 0.05f;
 
-        // Ball friction (mirror to velocity_multiplier)
+        // -------- Ball friction (hover highlight; arrows only change) --------
         std::string bf = std::format("Ball friction: {:.4f}", Config::linear_damping);
-        AddText(panelU, row2V, bf, lineScale, Alignment::LEFT, (focus == 1));
         float bfWidthPx = estimateWidthPx(bf, lineScale);
-        leftU = (panelU * winW + bfWidthPx + 18.0f) / winW;
-        rightU = (panelU * winW + bfWidthPx + 48.0f) / winW;
+        const float bfX0 = panelU * winW;
+        const float bfX1 = bfX0 + bfWidthPx;
+
+        const float row2Y0 = row2V * winH - rowH * 0.5f;
+        const float row2Y1 = row2V * winH + rowH * 0.5f;
+
+        const bool row2Hover = (mouseX >= bfX0 && mouseX <= bfX1 && mouseY >= row2Y0 && mouseY <= row2Y1);
+        if (row2Hover) focus = 1;
+        AddText(panelU, row2V, bf, lineScale, Alignment::LEFT, (focus == 1) || row2Hover);
+
+        leftU = (bfX0 + bfWidthPx + 18.0f) / winW;
+        rightU = (bfX0 + bfWidthPx + 48.0f) / winW;
+
+        // Expanded range + smaller step (±0.0005); ONLY arrows apply changes
         if (button(leftU, row2V, "<", lineScale, Alignment::CENTER, false, nullptr, nullptr)) {
-            Config::linear_damping = std::max(0.970f, Config::linear_damping - 0.002f);
+            Config::linear_damping = std::max(0.940f, std::min(0.9995f, Config::linear_damping - 0.0005f));
             Config::velocity_multiplier = Config::linear_damping;
         }
         if (button(rightU, row2V, ">", lineScale, Alignment::CENTER, false, nullptr, nullptr)) {
-            Config::linear_damping = std::min(0.999f, Config::linear_damping + 0.002f);
+            Config::linear_damping = std::max(0.940f, std::min(0.9995f, Config::linear_damping + 0.0005f));
             Config::velocity_multiplier = Config::linear_damping;
         }
 
@@ -312,6 +333,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
             settings_open_ = false;
             selected_ = has_started ? 2 : 1;
         }
+
 
         // Modal keyboard capture
         static int prevUp = GLFW_RELEASE, prevDown = GLFW_RELEASE, prevLeft = GLFW_RELEASE, prevRight = GLFW_RELEASE, prevEsc = GLFW_RELEASE;
@@ -327,14 +349,14 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
         if (kLeft == GLFW_PRESS && prevLeft == GLFW_RELEASE) {
             if (focus == 0) Config::power_coeff -= 0.05f;
             else {
-                Config::linear_damping = std::max(0.970f, Config::linear_damping - 0.002f);
+                Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
                 Config::velocity_multiplier = Config::linear_damping;
             }
         }
         if (kRight == GLFW_PRESS && prevRight == GLFW_RELEASE) {
             if (focus == 0) Config::power_coeff += 0.05f;
             else {
-                Config::linear_damping = std::min(0.999f, Config::linear_damping + 0.002f);
+                Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
                 Config::velocity_multiplier = Config::linear_damping;
             }
         }

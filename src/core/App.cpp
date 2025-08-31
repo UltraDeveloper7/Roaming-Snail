@@ -50,7 +50,7 @@ namespace {
 			glEnableVertexAttribArray(1);
 			glBindVertexArray(0);
 
-			// Shaders (placed in src/shaders/, see below)
+			// Shaders 
 			blurShader = std::make_shared<Shader>(Config::post_vertex_path,
 				Config::blur_fragment_path);
 			screenShader = std::make_shared<Shader>(Config::post_vertex_path,

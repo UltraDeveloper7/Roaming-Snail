@@ -103,7 +103,7 @@ struct Config final
 	// Friction & damping
 	inline static float cushion_friction = 0.10f;  
 	inline static float table_friction = 0.11f;  // only used in impact tangential exchange
-	inline static float linear_damping = 0.995f;  // now treated as "per-second": pow(0.99, dt*60)
+	inline static float linear_damping = 0.995f;  // treated as "per-second": pow(0.99, dt*60), Ball friction
 	inline static float angular_damping = 0.89f;  // spin lasts longer (per-second)
 
 	inline static float spin_transfer_coef = 0.3f;     // how strongly spin is transferred in collisions
