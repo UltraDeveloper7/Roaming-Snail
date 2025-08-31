@@ -64,6 +64,10 @@ public:
 	bool IsAfterBreak() const { return is_after_break_; }
 	void SetAfterBreak(bool v) { is_after_break_ = v; }
 
+	// Mark that at least one ball hit a rail after legal contact in this shot
+	void MarkRailContact();
+	bool RailAfterContact() const;
+
 
 	bool CheckRulesPending() const { return check_game_rules_; }
 	void SetCheckRulesPending(bool v) { check_game_rules_ = v; }
@@ -75,6 +79,7 @@ public:
 
 	bool CueHitOtherBall() const { return cueBallHitOtherBall_; }
 	void SetCueHitOtherBall(bool v) { cueBallHitOtherBall_ = v; }
+
 
 
 	int FirstContactIndex() const { return firstBallContactIndex_; }
@@ -91,6 +96,7 @@ public:
 	void SetShotClock(float v) { shot_clock_ = v; }
 
 
+
 private:
 	std::vector<Player> players_{ Player("Player 1"), Player("Player 2") };
 	int current_player_index_ = 0;
@@ -100,6 +106,7 @@ private:
 	bool is_first_shot_ = true; // table open at start
 	bool is_after_break_ = true; // first resolution after break
 	bool check_game_rules_ = false; // gate to run rules once when balls settle
+	bool rail_after_contact_ = false;
 
 
 	// per‑shot transients

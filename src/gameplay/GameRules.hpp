@@ -1,8 +1,6 @@
 #pragma once
 #include "../precompiled.h"
 
-
-
 class Ball;
 class GameState;
 

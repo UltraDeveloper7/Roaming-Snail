@@ -102,3 +102,6 @@ void GameState::AssignGroupFromBallNumber(int ballNumber) {
 	}
 	is_first_shot_ = false;
 }
+
+void GameState::MarkRailContact() { rail_after_contact_ = true; }
+bool GameState::RailAfterContact() const { return rail_after_contact_; }

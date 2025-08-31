@@ -29,7 +29,7 @@ public:
 	//Collision Handling
 	void HandleBallsCollision(int number) ;
 	void HandleHolesFall(int number) ;
-	void HandleBoundsCollision(const int number) const;
+	void HandleBoundsCollision(const int number) ;
 
 	[[nodiscard]] bool AreBallsInMotion() const;
 

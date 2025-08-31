@@ -294,7 +294,7 @@ void World::HandleHolesFall(const int number)
 }
 
 
-void World::HandleBoundsCollision(const int number) const
+void World::HandleBoundsCollision(const int number) 
 {
 	const auto ball_pos = balls_[number]->translation_;
 	constexpr auto hole_edge_z = 0.7f - Table::hole_radius_ - Ball::radius_;
@@ -304,10 +304,12 @@ void World::HandleBoundsCollision(const int number) const
 	if (ball_pos.x >= Table::bound_x_ && ball_pos.z < hole_edge_z && ball_pos.z > -hole_edge_z)
 	{
 		balls_[number]->BounceOffBound(glm::vec3(-1.0f, 0.0f, 0.0f), Table::bound_x_, Table::bound_z_);
+		state_.MarkRailContact();
 	}
 	else if (ball_pos.x <= -Table::bound_x_ && ball_pos.z < hole_edge_z && ball_pos.z > -hole_edge_z)
 	{
 		balls_[number]->BounceOffBound(glm::vec3(1.0f, 0.0f, 0.0f), Table::bound_x_, Table::bound_z_);
+		state_.MarkRailContact();
 	}
 	// Z-bounds
 	else if (ball_pos.z >= Table::bound_z_ &&
@@ -315,12 +317,14 @@ void World::HandleBoundsCollision(const int number) const
 			(ball_pos.x > -hole_edge_x && ball_pos.x < -Table::hole_radius_)))
 	{
 		balls_[number]->BounceOffBound(glm::vec3(0.0f, 0.0f, -1.0f), Table::bound_x_, Table::bound_z_);
+		state_.MarkRailContact();
 	}
 	else if (ball_pos.z <= -Table::bound_z_ &&
 		((ball_pos.x < hole_edge_x && ball_pos.x > Table::hole_radius_) ||
 			(ball_pos.x > -hole_edge_x && ball_pos.x < -Table::hole_radius_)))
 	{
 		balls_[number]->BounceOffBound(glm::vec3(0.0f, 0.0f, 1.0f), Table::bound_x_, Table::bound_z_);
+		state_.MarkRailContact();
 	}
 }
 
