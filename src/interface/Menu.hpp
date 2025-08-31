@@ -54,6 +54,9 @@ public:
 	}
 	bool IsHelpOpen()     const { return help_open_; }
 
+	// guideline setting, read-only from outside
+	bool IsGuidelineOn() const { return show_guideline_; }
+
 
 private:
 
@@ -113,4 +116,5 @@ private:
 	bool exit_clicked_{ false };
 	bool reset_clicked_{ false };
 	bool mouse_edge_down_ = false;
+	bool show_guideline_ = true; // default on
 };

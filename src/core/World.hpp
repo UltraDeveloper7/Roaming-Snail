@@ -26,6 +26,8 @@ public:
 	void Init() const;
 	void Reset() const;
 
+	std::shared_ptr<Cue> GetCue() const { return cue_; }
+
 	//Collision Handling
 	void HandleBallsCollision(int number) ;
 	void HandleHolesFall(int number) ;

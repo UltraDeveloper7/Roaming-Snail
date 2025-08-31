@@ -152,7 +152,7 @@ void Menu::DrawPauseMenu(bool modalOpen, int winW, int winH,
         bool resumeClicked = button(0.5f, 0.84f, "Resume game", Ui(1.05f), Alignment::CENTER, resumeSel, nullptr, nullptr) || isEnterOn(0);
         if (resumeClicked) play_clicked_ = true;
 
-        const float startV = 0.62f, stepV = 0.08f;
+        const float startV = 0.64f, stepV = 0.10f;
 
         const bool resetSel = (selected == 1);
         if (button(0.5f, startV + 0 * stepV, "Reset game", Ui(0.90f), Alignment::CENTER, resetSel, nullptr, nullptr) || isEnterOn(1)) {
@@ -310,13 +310,15 @@ void Menu::DrawSettingsIcon(int /*winW*/, int /*winH*/)
 
 void Menu::DrawUiSettingsModal(bool has_started)
 {
-    // More vertical breathing room
-    const float headV = 0.66f;
-    const float row1V = 0.56f; // UI scale
-    const float row2V = 0.46f; // Player 1
-    const float row3V = 0.38f; // Player 2
-    const float hintV = 0.33f; // locked hint
-    const float closeV = 0.28f; // Close
+    // More vertical breathing room (extra spacing everywhere)
+    const float headV = 0.70f;          // title
+    const float row1V = headV - 0.09f; // UI scale presets
+    const float guideV = row1V - 0.09f;  // Aiming guide (more gap below the scale)
+    const float row2V = guideV - 0.11f; // Player 1  (extra gap under aiming row)
+    const float row3V = row2V - 0.09f;  // Player 2
+    const float hintV = row3V - 0.08f;  // “Names are editable…” (shown during pause)
+    const float closeV = hintV - 0.08f;  // Close [Esc] (extra gap below the hint)
+
 
     AddText(0.5f, headV, "Settings", Ui(1.1f), Alignment::CENTER, true);
 
@@ -347,6 +349,12 @@ void Menu::DrawUiSettingsModal(bool has_started)
             ui_scale_ = kOpts[i].val;
         }
         x += widths[i] + gapPx;
+    }
+
+    // --- Aiming guideline toggle ---
+    const std::string gLabel = std::string(show_guideline_ ? "[x] " : "[ ] ") + "Aiming guide";
+    if (button(0.5f, guideV, gLabel, Ui(0.90f), Alignment::CENTER, show_guideline_, nullptr, nullptr)) {
+        show_guideline_ = !show_guideline_;
     }
 
     // --- Player names (gated by reset) ---

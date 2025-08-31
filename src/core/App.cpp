@@ -1,6 +1,8 @@
 ﻿#include "../precompiled.h"
 #include "App.hpp"
 #include "../objects/CueBallMap.hpp"
+#include "../objects/Table.hpp"
+
 
 // ------------------------------
 // Post processing internals
@@ -9,9 +11,13 @@ namespace {
 	GLuint sceneFBO = 0, sceneColor = 0, sceneDepth = 0;
 	GLuint pingFBO[2]{ 0,0 }, pingColor[2]{ 0,0 };
 	GLuint quadVAO = 0, quadVBO = 0;
+	static GLuint guideVAO = 0, guideVBO = 0;
+	static GLuint ringVAO = 0, ringVBO = 0;
+
 	int    ppW = 0, ppH = 0;
 
 	std::shared_ptr<Shader> blurShader, screenShader;
+	static std::shared_ptr<Shader> lineShader;
 
 	static GLuint makeColorTex(int w, int h) {
 		GLuint t; glGenTextures(1, &t);
@@ -128,6 +134,114 @@ namespace {
 		glBindTexture(GL_TEXTURE_2D, tex);
 		renderQuad();
 	}
+
+	static void ensureGuideResources() {
+		if (guideVAO != 0 && ringVAO != 0 && lineShader) return;
+
+		if (guideVAO == 0) {
+			glGenVertexArrays(1, &guideVAO);
+			glGenBuffers(1, &guideVBO);
+			glBindVertexArray(guideVAO);
+			glBindBuffer(GL_ARRAY_BUFFER, guideVBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6, nullptr, GL_DYNAMIC_DRAW);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(0);
+			glBindVertexArray(0);
+		}
+
+		if (ringVAO == 0) { // for the hollow impact circle
+			glGenVertexArrays(1, &ringVAO);
+			glGenBuffers(1, &ringVBO);
+			glBindVertexArray(ringVAO);
+			glBindBuffer(GL_ARRAY_BUFFER, ringVBO);
+			// room for 64 verts (x,y,z)
+			glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * 64, nullptr, GL_DYNAMIC_DRAW);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(0);
+			glBindVertexArray(0);
+		}
+
+		if (!lineShader)
+			lineShader = std::make_shared<Shader>(Config::line_vertex_path, Config::line_fragment_path);
+	}
+
+	// solve |O + tD - C|^2 = R^2  (D must be normalized)
+	static bool raySphere(const glm::vec3& O, const glm::vec3& D,
+		const glm::vec3& C, float R, float& tHit)
+	{
+		const glm::vec3 oc = O - C;
+		const float b = glm::dot(oc, D);
+		const float c = glm::dot(oc, oc) - R * R;
+		const float disc = b * b - c;
+		if (disc < 0.0f) return false;
+		const float t = -b - std::sqrt(disc);
+		if (t <= 0.0f) return false;
+		tHit = t;
+		return true;
+	}
+
+	static void drawLine3D(const glm::mat4& view, const glm::mat4& proj,
+		const glm::vec3& a, const glm::vec3& b,
+		float width, const glm::vec3& color)
+	{
+		ensureGuideResources();
+		glBindVertexArray(guideVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, guideVBO);
+		float v[6] = { a.x,a.y,a.z, b.x,b.y,b.z };
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(v), v);
+
+		lineShader->Bind();
+		glm::mat4 mvp = proj * view;
+		lineShader->SetMat4(mvp, "uMVP");
+		lineShader->SetVec3(color, "uColor");
+		glLineWidth(width);
+		glDrawArrays(GL_LINES, 0, 2);
+		glBindVertexArray(0);
+	}
+
+	// Hollow circle in XZ-plane (y fixed)
+	static void drawCircleXZ(const glm::mat4& view, const glm::mat4& proj,
+		const glm::vec3& center, float radius,
+		int segments, float width, const glm::vec3& color)
+	{
+		ensureGuideResources();
+		segments = std::min(std::max(segments, 12), 64);
+		std::vector<float> verts; verts.reserve(3 * segments);
+		for (int i = 0; i < segments; ++i) {
+			float t = (float)i / (float)segments * 2.0f * glm::pi<float>();
+			float cx = center.x + radius * std::cos(t);
+			float cz = center.z + radius * std::sin(t);
+			verts.push_back(cx);
+			verts.push_back(center.y);
+			verts.push_back(cz);
+		}
+		glBindVertexArray(ringVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, ringVBO);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * verts.size(), verts.data());
+
+		lineShader->Bind();
+		glm::mat4 mvp = proj * view;
+		lineShader->SetMat4(mvp, "uMVP");
+		lineShader->SetVec3(color, "uColor");
+		glLineWidth(width);
+		glDrawArrays(GL_LINE_LOOP, 0, segments);
+		glBindVertexArray(0);
+	}
+
+	// Clip distance so that C + t*dir stays strictly inside cushions
+	static float clipToTableXZ(const glm::vec3& C, const glm::vec3& dir,
+		float tDesired, float margin)
+	{
+		float tMax = tDesired;
+
+		if (dir.x > 0.0f)  tMax = std::min(tMax, (Table::bound_x_ - margin - C.x) / dir.x);
+		if (dir.x < 0.0f)  tMax = std::min(tMax, (-Table::bound_x_ + margin - C.x) / dir.x);
+		if (dir.z > 0.0f)  tMax = std::min(tMax, (Table::bound_z_ - margin - C.z) / dir.z);
+		if (dir.z < 0.0f)  tMax = std::min(tMax, (-Table::bound_z_ + margin - C.z) / dir.z);
+
+		return std::max(0.0f, tMax);
+	}
+
 } // anonymous namespace
 
 // -------------------------------------------------------------
@@ -250,6 +364,57 @@ void App::OnUpdate()
 	}
 	else {
 		present(sceneColor, glm::vec4(0, 0, 0, 0), 0.0f);                // no effect
+	}
+
+	// ---- aiming guideline overlay (optional) ----
+	if (world_ && !in_menu_ && menu_->IsGuidelineOn() && !world_->AreBallsInMotion())
+	{
+		const auto& balls = world_->GetBalls();
+		const glm::vec3 O = balls[0]->translation_;
+		const glm::vec3 D = glm::normalize(world_->GetCue()->AimDir());  // cue-ball travel dir
+
+		// Find first object-ball hit (Minkowski radius = 2R)
+		const float R = 2.0f * Ball::radius_;
+		float bestT = std::numeric_limits<float>::max();
+		int hitIdx = -1;
+		for (int i = 1; i < (int)balls.size(); ++i) {
+			if (!balls[i]->IsDrawn()) continue;
+			float t;
+			if (raySphere(O, D, balls[i]->translation_, R, t)) {
+				if (t < bestT) { bestT = t; hitIdx = i; }
+			}
+		}
+
+		const glm::mat4 view = camera_->GetViewMatrix();
+		const glm::mat4 proj = camera_->GetProjectionMatrix();
+
+		glDisable(GL_DEPTH_TEST); // HUD-style overlay
+
+		// Main white line: cue-ball to first contact (or a short preview if nothing hit)
+		glm::vec3 impact = (hitIdx != -1) ? (O + D * bestT) : (O + D * 2.0f);
+		drawLine3D(view, proj, O, impact, 2.0f, glm::vec3(1.0f));
+
+		// Small hollow circle at the contact end (on the cue-ball side), only if we have a real hit
+		if (hitIdx != -1) {
+			const float ringR = Ball::radius_ * 0.25f;       // small, not filled
+			const float eps = Ball::radius_ * 0.03f;       // pull back a hair to avoid z-fighting
+			glm::vec3 ringCenter = impact - D * eps;
+			ringCenter.y = Ball::radius_;
+			drawCircleXZ(view, proj, ringCenter, ringR, 40, 2.0f, glm::vec3(1.0f));
+		}
+
+		// Yellow predicted *object ball* direction; keep it inside the table
+		if (hitIdx != -1) {
+			const glm::vec3 C = balls[hitIdx]->translation_;
+			const glm::vec3 objDir = glm::normalize(C - impact);   // line-of-centers
+			const float want = 0.90f;                               // desired preview length
+			const float margin = 0.025f;                            // stay away from cushions
+			float tClipped = clipToTableXZ(C, objDir, want, margin);
+			if (tClipped > 1e-4f) {
+				glm::vec3 endY = C + objDir * tClipped;
+				drawLine3D(view, proj, C, endY, 2.0f, glm::vec3(1.0f, 1.0f, 0.0f));
+			}
+		}
 	}
 
 	// ---- text UI pass ----

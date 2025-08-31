@@ -51,6 +51,9 @@ struct Config final
 	inline static constexpr const char* const post_vertex_path = "post.vertexshader";
 	inline static constexpr const char* const blur_fragment_path = "blur.fragmentshader";
 	inline static constexpr const char* const screen_fragment_path = "screen.fragmentshader";
+	inline static constexpr const char* line_vertex_path = "line.vertexshader";
+	inline static constexpr const char* line_fragment_path = "line.fragmentshader";
+
 
 
 
@@ -67,9 +70,9 @@ struct Config final
 	inline static constexpr int light_count = 3; // Existing lights controlled with LShift
 	inline static constexpr int physical_light_count = 10; // New physical lights controlled with numpad
 	inline static constexpr int max_shader_lights = 14; // Maximum number of lights in the shader
-	//inline static constexpr const char* const hdr_path = "billiard_hall_4k.hdr";
+	inline static constexpr const char* const hdr_path = "billiard_hall_4k.hdr";
 	//inline static constexpr const char* const hdr_path = "empty_play_room_4k.hdr";
-	inline static constexpr const char* const hdr_path = "brown_photostudio_4k.hdr"; 
+	//inline static constexpr const char* const hdr_path = "brown_photostudio_4k.hdr"; 
 	inline static constexpr int cube_map_size = 4096;
 	inline static constexpr int irradiance_scale = 128;
 	inline static constexpr int prefilter_scale = 1024;
