@@ -39,6 +39,11 @@ set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT EightBallPool)
 target_include_directories(EightBallPool PRIVATE "${CMAKE_SOURCE_DIR}/src")
 target_compile_definitions(EightBallPool PRIVATE GLM_ENABLE_EXPERIMENTAL)
 
+# --- Force MSVC to treat sources & execution charset as UTF-8 (for "⚙", "ℹ", etc.)
+if(MSVC)
+  target_compile_options(EightBallPool PRIVATE /utf-8)
+endif()
+
 # --- Deps via vcpkg
 find_package(OpenGL REQUIRED)
 find_package(glfw3          CONFIG REQUIRED)
@@ -101,7 +106,7 @@ if(WIN32)
   target_link_libraries(EightBallPool PRIVATE user32 gdi32 shell32)
 endif()
 
-# --- Resources: add + copy shaders
+# --- Resources: add + copy shaders and assets (incl. fonts)
 file(GLOB_RECURSE SHADER_FILES "${CMAKE_SOURCE_DIR}/src/shaders/*")
 if(SHADER_FILES)
   target_sources(EightBallPool PRIVATE ${SHADER_FILES})

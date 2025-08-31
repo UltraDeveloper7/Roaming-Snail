@@ -33,7 +33,7 @@ void Cue::HandleShot(const std::shared_ptr<Ball>& white_ball, const float dt)
     const bool kDown = glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS;
     const bool kSpace = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 
-    // Rotate cue around the ball (left/right) — only when we haven't changed power this frame
+    // Rotate cue around the ball (left/right) â€” only when we haven't changed power this frame
     if (!power_changed_) {
         if (kLeft) {
             Rotate(cue_rot_axis, dt);

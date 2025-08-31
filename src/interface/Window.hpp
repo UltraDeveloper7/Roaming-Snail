@@ -19,7 +19,7 @@ public:
     [[nodiscard]] int GetHeight() const;
     void ResetResizedFlag();
 
-    // (Optional helpers—safe to ignore; no breaking changes)
+    // (Optional helpersâ€”safe to ignore; no breaking changes)
     void MakeContextCurrent();
     void SwapBuffers();
     void SetVSync(bool on);

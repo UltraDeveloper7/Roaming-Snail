@@ -80,7 +80,10 @@ struct Config final
 
 	// Font
 	//inline static constexpr const char* const font_path = "CronusRound-KA6y.ttf";
-	inline static constexpr const char* const font_path = "PassagewayBold-YBgv.otf";
+	//inline static constexpr const char* const font_path = "PassagewayBold-YBgv.otf";
+	//inline static constexpr const char* const font_path = "NotoSans-Regular.ttf";
+	inline static constexpr const char* const font_path = "NotoSans-Bold.ttf";
+	//inline static constexpr const char* const font_path = "NotoSansSymbols2-Regular.ttf";
 	inline static constexpr unsigned default_font_size = 64;
 
 	// Physics

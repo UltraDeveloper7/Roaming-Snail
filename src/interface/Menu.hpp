@@ -36,11 +36,13 @@ public:
 	void Update(int width, int height);
 	void AddText(float u, float v, const std::string& text, float scale = 1.0f, Alignment alignment = Alignment::LEFT, bool selected = false);
 
+	void InstallCharCallback(GLFWwindow* window);
+
 	// Read current names (for initial sync when the world is first created)
 	const std::string& P1Name() const { return p1_name_; }
 	const std::string& P2Name() const { return p2_name_; }
 
-	// One-shot ìconsume if changedî (prevents spamming updates every frame)
+	// One-shot ‚Äúconsume if changed‚Äù (prevents spamming updates every frame)
 	bool ConsumeEditedNames(std::string& outP1, std::string& outP2);
 
 
@@ -96,6 +98,9 @@ private:
 	// very rough text metrics
 	float estimateWidthPx(const std::string& s, float scale) const;
 	float estimateHeightPx(float scale) const;
+
+	static void CharCallbackThunk(GLFWwindow* wnd, unsigned int codepoint);
+	static std::u32string char_buffer_;  // per-frame typed Unicode points
 
 	int width_{};
 	int height_{};

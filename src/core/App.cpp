@@ -533,6 +533,7 @@ void App::Load()
 {
 	world_ = std::make_unique<World>(cue_ball_map_, *camera_);
 	environment_ = std::make_unique<Environment>();
+	menu_->InstallCharCallback(window_->GetGLFWWindow());
 
 	camera_->Init();
 	world_->Init();

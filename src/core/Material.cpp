@@ -58,7 +58,7 @@ void Material::Bind(const std::shared_ptr<Shader>& shader) const
 
 void Material::Unbind(const std::shared_ptr<Shader>& shader) const
 {
-	// Clear flags so the next material starts clean even if it doesn’t call Bind
+	// Clear flags so the next material starts clean even if it doesnâ€™t call Bind
 	if (diffuse_texture)
 		shader->SetBool(false, "material.hasDiffuseMap");
 

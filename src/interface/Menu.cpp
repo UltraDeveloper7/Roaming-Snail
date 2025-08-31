@@ -38,11 +38,69 @@ namespace {
             v -= lineGap;
         }
     }
+
+    // Queue of typed Unicode codepoints this frame
+    static std::u32string g_charQueue;
+
+    // GLFW will call this for *text* input (after layout & modifiers)
+    static void CharCallback(GLFWwindow*, unsigned int codepoint) {
+        g_charQueue.push_back(static_cast<char32_t>(codepoint));
+    }
+
+    // Append a single Unicode codepoint to a UTF-8 string
+    static void AppendUTF8(std::string& out, char32_t cp) {
+        if (cp <= 0x7F) {
+            out.push_back(static_cast<char>(cp));
+        }
+        else if (cp <= 0x7FF) {
+            out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        }
+        else if (cp <= 0xFFFF) {
+            // skip UTF-16 surrogate range
+            if (cp >= 0xD800 && cp <= 0xDFFF) return;
+            out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+            out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        }
+        else if (cp <= 0x10FFFF) {
+            out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+            out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+            out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        }
+    }
+
+    // Count codepoints in a UTF-8 string (rough, tolerant)
+    static int CountCodepoints(const std::string& s) {
+        size_t i = 0; int count = 0;
+        while (i < s.size()) {
+            unsigned char c = static_cast<unsigned char>(s[i++]);
+            if (c < 0x80) { ++count; continue; }
+            if ((c & 0xE0) == 0xC0) { if (i < s.size() && (static_cast<unsigned char>(s[i]) & 0xC0) == 0x80) ++i; ++count; }
+            else if ((c & 0xF0) == 0xE0) { for (int k = 0; k < 2 && i < s.size(); ++k) if ((static_cast<unsigned char>(s[i]) & 0xC0) == 0x80) ++i; ++count; }
+            else if ((c & 0xF8) == 0xF0) { for (int k = 0; k < 3 && i < s.size(); ++k) if ((static_cast<unsigned char>(s[i]) & 0xC0) == 0x80) ++i; ++count; }
+            else { ++count; }
+        }
+        return count;
+    }
+
+    #define U8C(str) reinterpret_cast<const char*>(u8##str)
+
+    // UTF-8 icons (make sure your source file is saved as UTF-8)
+    static const char* ICON_SETTINGS = U8C("\u2699"); // ⚙
+    static const char* ICON_INFO = U8C("\u2139"); // ℹ
+
 }
 
 // --------------------------------------------------------------------//
 
 Menu::Menu(const int width, const int height) : width_(width), height_(height) {
+    GLFWwindow* win = glfwGetCurrentContext();
+    if (win) {
+        // Receive Unicode characters for all layouts (Greek, etc.)
+        glfwSetCharCallback(win, CharCallback);
+    }
     selected_ = -1;
     last_mouse_ = GLFW_RELEASE;
 }
@@ -115,6 +173,20 @@ bool Menu::ConsumePlayClicked() { bool b = play_clicked_;  play_clicked_ = false
 bool Menu::ConsumeExitClicked() { bool b = exit_clicked_;  exit_clicked_ = false; return b; }
 bool Menu::ConsumeResetClicked() { bool b = reset_clicked_; reset_clicked_ = false; return b; }
 
+
+std::u32string Menu::char_buffer_{};
+
+void Menu::InstallCharCallback(GLFWwindow* window) {
+    glfwSetCharCallback(window, &Menu::CharCallbackThunk);
+}
+
+void Menu::CharCallbackThunk(GLFWwindow* /*wnd*/, unsigned int codepoint) {
+    // Store the Unicode scalar as-is. IME delivers finalized characters here.
+    if (codepoint >= 0x20) { // ignore control chars
+        char_buffer_.push_back(static_cast<char32_t>(codepoint));
+    }
+}
+
 void Menu::DrawMainMenu(bool modalOpen, int winW, int winH,
     float mouseX, float mouseY, int curEnter,
     int& prevEnter, int& selected)
@@ -137,7 +209,8 @@ void Menu::DrawMainMenu(bool modalOpen, int winW, int winH,
         const bool qsSelected = (selected == 1);
         const char* dd = settings_open_ ? "v" : ">";
         bool qsClicked = !modalOpen &&
-            button(0.10f, 0.18f, std::string(dd) + "  Quick Setup", Ui(0.85f), Alignment::LEFT, qsSelected, nullptr, nullptr);
+            button(0.10f, 0.18f, std::string(dd) + "  Quick Setup", 
+                Ui(0.85f), Alignment::LEFT, qsSelected, nullptr, nullptr);
         if (qsClicked || isEnterOn(1)) { settings_open_ = true; selected = 1; }
     }
 
@@ -145,7 +218,8 @@ void Menu::DrawMainMenu(bool modalOpen, int winW, int winH,
     if (!help_open_) {
         const bool helpSel = (selected == 2);
         bool helpClicked = !modalOpen &&
-            button(0.10f, 0.10f, "[i] How to Play", Ui(0.90f), Alignment::LEFT, helpSel, nullptr, nullptr);
+            button(0.10f, 0.10f, std::string(ICON_INFO) + "  How to Play",
+                Ui(0.90f), Alignment::LEFT, helpSel, nullptr, nullptr);
         if (helpClicked || isEnterOn(2)) { help_open_ = true; selected = 2; }
     }
 }
@@ -180,7 +254,8 @@ void Menu::DrawPauseMenu(bool modalOpen, int winW, int winH,
         }
 
         const bool helpSel = (selected == 3);
-        if (button(0.5f, startV - 2 * stepV, "[i] How to Play", Ui(0.90f), Alignment::CENTER, helpSel, nullptr, nullptr) || isEnterOn(3)) {
+        if (button(0.5f, startV - 2 * stepV, std::string(ICON_INFO) + "  How to Play",
+            Ui(0.90f), Alignment::CENTER, helpSel, nullptr, nullptr) || isEnterOn(3)) {
             help_open_ = true; selected = 3;
         }
 
@@ -291,7 +366,9 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float mouseX, float mouseY, b
 
 void Menu::DrawHelpModal(bool has_started)
 {
-    AddText(0.5f, 0.62f, "[i] How to Play", Ui(1.1f), Alignment::CENTER, true);
+    AddText(0.5f, 0.62f, std::string(ICON_INFO) + "  How to Play",
+        Ui(1.1f), Alignment::CENTER, true);
+
 
     RenderHelpBlock(*this, /*u*/0.5f, /*vTop*/0.56f, Alignment::CENTER,
         Ui(0.75f), /*lineGap*/0.045f);
@@ -314,7 +391,7 @@ void Menu::DrawHelpModal(bool has_started)
 void Menu::DrawSettingsIcon(int /*winW*/, int /*winH*/)
 {
     // Shown only when ui_settings_open_ == false (caller guards this)
-    if (button(0.97f, 0.06f, "*", Ui(1.1f), Alignment::RIGHT, false, nullptr, nullptr)) {
+    if (button(0.97f, 0.06f, ICON_SETTINGS, Ui(1.1f), Alignment::RIGHT, false, nullptr, nullptr)) {
         ui_settings_open_ = true;
         active_input_ = -1;
     }
@@ -333,7 +410,9 @@ void Menu::DrawUiSettingsModal(bool has_started)
     const float closeV = hintV - 0.08f;  // Close [Esc] (extra gap below the hint)
 
 
-    AddText(0.5f, headV, "Settings", Ui(1.1f), Alignment::CENTER, true);
+    AddText(0.5f, headV, std::string(ICON_SETTINGS) + "  Settings",
+        Ui(1.1f), Alignment::CENTER, true);
+
 
     // --- UI Scale presets (50/75/100) laid out by measured width with fixed px gap ---
     struct Opt { const char* txt; float val; };
@@ -405,7 +484,7 @@ void Menu::DrawUiSettingsModal(bool has_started)
     if (canEditNames && (active_input_ == 0 || active_input_ == 1)) {
         GLFWwindow* w = glfwGetCurrentContext();
         auto& target = (active_input_ == 0 ? p1_name_ : p2_name_);
-        const size_t maxLen = 18;
+        const int maxCodepoints = 18;
 
         auto keyEdge = [&](int key)->bool {
             static int prev[512] = { 0 };
@@ -414,49 +493,32 @@ void Menu::DrawUiSettingsModal(bool has_started)
             prev[key] = cur; return e;
             };
 
-        const bool shift =
-            (glfwGetKey(w, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ||
-            (glfwGetKey(w, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
-
-        // Use Shift XOR CapsLock toggle state
-        const bool upper = shift ^ IsCapsLockOn();
-
-
+        // Backspace & Enter still via key events
         if (keyEdge(GLFW_KEY_BACKSPACE)) {
-            if (!target.empty()) { target.pop_back(); names_dirty_ = true; }
+            // erase last UTF-8 codepoint
+            if (!target.empty()) {
+                // step back over UTF-8 continuation bytes
+                size_t i = target.size();
+                do { --i; } while (i > 0 && (static_cast<unsigned char>(target[i]) & 0xC0) == 0x80);
+                target.erase(i);
+                names_dirty_ = true;
+            }
         }
-        if (keyEdge(GLFW_KEY_ENTER) || keyEdge(GLFW_KEY_KP_ENTER))
+        if (keyEdge(GLFW_KEY_ENTER) || keyEdge(GLFW_KEY_KP_ENTER)) {
             active_input_ = -1;
-
-        // Letters A..Z
-        for (int k = GLFW_KEY_A; k <= GLFW_KEY_Z; ++k) if (keyEdge(k)) {
-            char c = static_cast<char>((upper ? 'A' : 'a') + (k - GLFW_KEY_A));
-            if (target.size() < maxLen) { target.push_back(c); names_dirty_ = true; }
         }
 
-        // Numbers 0..9 (main row)
-        for (int k = GLFW_KEY_0; k <= GLFW_KEY_9; ++k) if (keyEdge(k)) {
-            char c = static_cast<char>('0' + (k - GLFW_KEY_0));
-            if (target.size() < maxLen) { target.push_back(c); names_dirty_ = true; }
+        // Consume Unicode characters typed this frame
+        for (char32_t cp : g_charQueue) {
+            if (cp == U'\r' || cp == U'\n') { active_input_ = -1; continue; }
+            if (CountCodepoints(target) < maxCodepoints) {
+                AppendUTF8(target, cp);
+                names_dirty_ = true;
+            }
         }
-
-        // Optional: Numpad digits
-        for (int k = GLFW_KEY_KP_0; k <= GLFW_KEY_KP_9; ++k) if (keyEdge(k)) {
-            char c = static_cast<char>('0' + (k - GLFW_KEY_KP_0));
-            if (target.size() < maxLen) { target.push_back(c); names_dirty_ = true; }
-        }
-
-        // Space
-        if (keyEdge(GLFW_KEY_SPACE)) {
-            if (target.size() < maxLen) { target.push_back(' '); names_dirty_ = true; }
-        }
-
-        // Hyphen/underscore
-        if (keyEdge(GLFW_KEY_MINUS)) {
-            if (target.size() < maxLen) { target.push_back(shift ? '_' : '-'); names_dirty_ = true; }
-        }
+        // Clear the queue after consuming
+        g_charQueue.clear();
     }
-
 
     // --- ALWAYS VISIBLE/ACTIVE below (even if no field is focused) ---
     if (has_started && !rename_gate_open_) {
@@ -522,6 +584,11 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
 
     prevMouse = curMouse;
     prevEnter = curEnter;
+
+    // If no text field is focused, drop any typed characters this frame
+    if (active_input_ == -1 && !g_charQueue.empty())
+        g_charQueue.clear();
+
 }
 
 void Menu::ControlState()
