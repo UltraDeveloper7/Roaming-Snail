@@ -334,7 +334,6 @@ void Menu::DrawUiSettingsModal(bool has_started)
     for (int i = 0; i < kOptCount; ++i) {
         const bool on = std::fabs(ui_scale_ - kOpts[i].val) < 0.001f;
         labels[i] = std::string(on ? "[x] " : "[ ] ") + kOpts[i].txt;
-        // include UI scale in width to match what’s drawn
         widths[i] = estimateWidthPx(labels[i], cbScale) * ui_scale_;
         totalPx += widths[i];
     }
@@ -381,7 +380,7 @@ void Menu::DrawUiSettingsModal(bool has_started)
     nameRow(row2V, "Player 1: ", 0, p1_name_);
     nameRow(row3V, "Player 2: ", 1, p2_name_);
 
-    // typing (unchanged)
+    // --- Typing handler (ONLY when a field is active) ---
     if (canEditNames && (active_input_ == 0 || active_input_ == 1)) {
         GLFWwindow* w = glfwGetCurrentContext();
         auto& target = (active_input_ == 0 ? p1_name_ : p2_name_);
@@ -393,12 +392,11 @@ void Menu::DrawUiSettingsModal(bool has_started)
             bool e = (cur == GLFW_PRESS && prev[key] == GLFW_RELEASE);
             prev[key] = cur; return e;
             };
-        const bool shift = (glfwGetKey(w, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ||
+        const bool shift =
+            (glfwGetKey(w, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ||
             (glfwGetKey(w, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
 
-        if (keyEdge(GLFW_KEY_BACKSPACE)) {
-            if (!target.empty()) { target.pop_back(); names_dirty_ = true; }
-        }
+        if (keyEdge(GLFW_KEY_BACKSPACE)) { if (!target.empty()) { target.pop_back(); names_dirty_ = true; } }
         if (keyEdge(GLFW_KEY_ENTER) || keyEdge(GLFW_KEY_KP_ENTER)) active_input_ = -1;
 
         for (int k = GLFW_KEY_A; k <= GLFW_KEY_Z; ++k) if (keyEdge(k)) {
@@ -412,27 +410,29 @@ void Menu::DrawUiSettingsModal(bool has_started)
         }
         if (keyEdge(GLFW_KEY_SPACE)) { if (target.size() < maxLen) { target.push_back(' '); names_dirty_ = true; } }
         if (keyEdge(GLFW_KEY_MINUS)) { if (target.size() < maxLen) { target.push_back(shift ? '_' : '-'); names_dirty_ = true; } }
-
-
-        if (has_started && !rename_gate_open_) {
-            AddText(0.5f, hintV, "Names are editable after Reset game.", Ui(0.75f), Alignment::CENTER, false);
-        }
-
-        if (button(0.5f, closeV, "Close [Esc]", Ui(0.85f), Alignment::CENTER, false, nullptr, nullptr)) {
-            ui_settings_open_ = false;
-            active_input_ = -1;
-            rename_gate_open_ = false; // one-time gate
-        }
-
-        static int prevEsc = GLFW_RELEASE;
-        const int kEsc = glfwGetKey(glfwGetCurrentContext(), GLFW_KEY_ESCAPE);
-        if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
-            ui_settings_open_ = false;
-            active_input_ = -1;
-            rename_gate_open_ = false;
-        }
-        prevEsc = kEsc;
     }
+
+    // --- ALWAYS VISIBLE/ACTIVE below (even if no field is focused) ---
+    if (has_started && !rename_gate_open_) {
+        AddText(0.5f, hintV, "Names are editable after Reset game.", Ui(0.75f), Alignment::CENTER, false);
+    }
+
+    // Close button
+    if (button(0.5f, closeV, "Close [Esc]", Ui(0.85f), Alignment::CENTER, false, nullptr, nullptr)) {
+        ui_settings_open_ = false;
+        active_input_ = -1;
+        rename_gate_open_ = false; // one-time gate
+    }
+
+    // Esc to close
+    static int prevEsc = GLFW_RELEASE;
+    const int kEsc = glfwGetKey(glfwGetCurrentContext(), GLFW_KEY_ESCAPE);
+    if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
+        ui_settings_open_ = false;
+        active_input_ = -1;
+        rename_gate_open_ = false;
+    }
+    prevEsc = kEsc;
 }
 
 
