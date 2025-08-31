@@ -90,6 +90,352 @@ bool Menu::button(float u, float v, const std::string& label, float scale,
     return clicked;
 }
 
+bool Menu::ConsumeEditedNames(std::string& outP1, std::string& outP2) {
+    if (!names_dirty_) return false;
+    outP1 = p1_name_;
+    outP2 = p2_name_;
+    names_dirty_ = false;
+    return true;
+}
+
+bool Menu::ConsumePlayClicked() { bool b = play_clicked_;  play_clicked_ = false; return b; }
+bool Menu::ConsumeExitClicked() { bool b = exit_clicked_;  exit_clicked_ = false; return b; }
+bool Menu::ConsumeResetClicked() { bool b = reset_clicked_; reset_clicked_ = false; return b; }
+
+void Menu::DrawMainMenu(bool modalOpen, int winW, int winH,
+    float mouseX, float mouseY, int curEnter,
+    int& prevEnter, int& selected)
+{
+    auto isEnterOn = [&](int logicalIndex)->bool {
+        if (selected == -1) return false;
+        const bool pressed = (curEnter == GLFW_PRESS && prevEnter == GLFW_RELEASE);
+        return pressed && (selected == logicalIndex);
+        };
+
+    // Play
+    const bool playSelected = (selected == 0);
+    if (!modalOpen) {
+        bool playClicked = button(0.5f, 0.70f, "Play", Ui(1.05f), Alignment::CENTER, playSelected, nullptr, nullptr) || isEnterOn(0);
+        if (playClicked) play_clicked_ = true;
+    }
+
+    // Quick Setup (opens modal)
+    if (!settings_open_) {
+        const bool qsSelected = (selected == 1);
+        const char* dd = settings_open_ ? "v" : ">";
+        bool qsClicked = !modalOpen &&
+            button(0.10f, 0.18f, std::string(dd) + "  Quick Setup", Ui(0.85f), Alignment::LEFT, qsSelected, nullptr, nullptr);
+        if (qsClicked || isEnterOn(1)) { settings_open_ = true; selected = 1; }
+    }
+
+    // How to Play (opens modal)
+    if (!help_open_) {
+        const bool helpSel = (selected == 2);
+        bool helpClicked = !modalOpen &&
+            button(0.10f, 0.10f, "[i] How to Play", Ui(0.90f), Alignment::LEFT, helpSel, nullptr, nullptr);
+        if (helpClicked || isEnterOn(2)) { help_open_ = true; selected = 2; }
+    }
+}
+
+void Menu::DrawPauseMenu(bool modalOpen, int winW, int winH,
+    float mouseX, float mouseY, int curEnter,
+    int& prevEnter, int& selected)
+{
+    auto isEnterOn = [&](int i)->bool {
+        if (selected == -1) return false;
+        bool pressed = (curEnter == GLFW_PRESS && prevEnter == GLFW_RELEASE);
+        return pressed && (selected == i);
+        };
+
+    if (!modalOpen) {
+        const bool resumeSel = (selected == 0);
+        bool resumeClicked = button(0.5f, 0.84f, "Resume game", Ui(1.05f), Alignment::CENTER, resumeSel, nullptr, nullptr) || isEnterOn(0);
+        if (resumeClicked) play_clicked_ = true;
+
+        const float startV = 0.62f, stepV = 0.08f;
+
+        const bool resetSel = (selected == 1);
+        if (button(0.5f, startV + 0 * stepV, "Reset game", Ui(0.90f), Alignment::CENTER, resetSel, nullptr, nullptr) || isEnterOn(1)) {
+            reset_clicked_ = true;
+            rename_gate_open_ = true;  // allow editing names this pause session
+        }
+
+        const bool qsSel = (selected == 2);
+        const char* dd = settings_open_ ? "v" : ">";
+        if (button(0.5f, startV - 1 * stepV, std::string(dd) + "  Quick Setup", Ui(0.90f), Alignment::CENTER, qsSel, nullptr, nullptr) || isEnterOn(2)) {
+            settings_open_ = true; selected = 2;
+        }
+
+        const bool helpSel = (selected == 3);
+        if (button(0.5f, startV - 2 * stepV, "[i] How to Play", Ui(0.90f), Alignment::CENTER, helpSel, nullptr, nullptr) || isEnterOn(3)) {
+            help_open_ = true; selected = 3;
+        }
+
+        const bool exitSel = (selected == 4);
+        if (button(0.5f, startV - 3 * stepV, "Exit game", Ui(0.90f), Alignment::CENTER, exitSel, nullptr, nullptr) || isEnterOn(4)) {
+            exit_clicked_ = true;
+        }
+    }
+}
+
+
+void Menu::DrawQuickSetupModal(int winW, int winH, float mouseX, float mouseY, bool has_started)
+{
+    static int focus = 0; // 0 = strike force, 1 = friction
+
+    const float panelU = 0.42f;
+    const float headV = 0.60f;
+    const float row1V = 0.54f;
+    const float row2V = 0.49f;
+    const float closeV = 0.43f;
+
+    AddText(panelU, headV, "Quick Setup  v", Ui(0.9f), Alignment::LEFT, true);
+
+    const float lineScale = Ui(0.8f);
+
+    // Strike force (arrows only)
+    std::string sf = std::format("Strike force: {:.2f}", Config::power_coeff);
+    float sfWidthPx = estimateWidthPx(sf, lineScale);
+    const float sfX0 = panelU * winW;
+    const float rowH = estimateHeightPx(lineScale);
+    const float row1Y0 = row1V * winH - rowH * 0.5f;
+    const float row1Y1 = row1V * winH + rowH * 0.5f;
+
+    const bool row1Hover = (mouseX >= sfX0 && mouseX <= sfX0 + sfWidthPx && mouseY >= row1Y0 && mouseY <= row1Y1);
+    if (row1Hover) focus = 0;
+    AddText(panelU, row1V, sf, lineScale, Alignment::LEFT, (focus == 0) || row1Hover);
+
+    float leftU = (sfX0 + sfWidthPx + 18.0f) / winW;
+    float rightU = (sfX0 + sfWidthPx + 48.0f) / winW;
+    if (button(leftU, row1V, "<", lineScale, Alignment::CENTER, false, nullptr, nullptr))
+        Config::power_coeff -= 0.05f;
+    if (button(rightU, row1V, ">", lineScale, Alignment::CENTER, false, nullptr, nullptr))
+        Config::power_coeff += 0.05f;
+
+    // Ball friction (arrows only), fine step ±0.0005, range [0.9400..0.9995]
+    std::string bf = std::format("Ball friction: {:.4f}", Config::linear_damping);
+    float bfWidthPx = estimateWidthPx(bf, lineScale);
+    const float bfX0 = panelU * winW;
+    const float row2Y0 = row2V * winH - rowH * 0.5f;
+    const float row2Y1 = row2V * winH + rowH * 0.5f;
+
+    const bool row2Hover = (mouseX >= bfX0 && mouseX <= bfX0 + bfWidthPx && mouseY >= row2Y0 && mouseY <= row2Y1);
+    if (row2Hover) focus = 1;
+    AddText(panelU, row2V, bf, lineScale, Alignment::LEFT, (focus == 1) || row2Hover);
+
+    leftU = (bfX0 + bfWidthPx + 18.0f) / winW;
+    rightU = (bfX0 + bfWidthPx + 48.0f) / winW;
+
+    if (button(leftU, row2V, "<", lineScale, Alignment::CENTER, false, nullptr, nullptr)) {
+        Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
+        Config::velocity_multiplier = Config::linear_damping;
+    }
+    if (button(rightU, row2V, ">", lineScale, Alignment::CENTER, false, nullptr, nullptr)) {
+        Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
+        Config::velocity_multiplier = Config::linear_damping;
+    }
+
+    // Close
+    if (button(panelU, closeV, "Close [Esc]", Ui(0.8f), Alignment::LEFT, false, nullptr, nullptr)) {
+        settings_open_ = false;
+        selected_ = has_started ? 2 : 1;
+    }
+
+    // keyboard in modal
+    static int prevUp = GLFW_RELEASE, prevDown = GLFW_RELEASE, prevLeft = GLFW_RELEASE, prevRight = GLFW_RELEASE, prevEsc = GLFW_RELEASE;
+    GLFWwindow* w = glfwGetCurrentContext();
+    int kUp = glfwGetKey(w, GLFW_KEY_UP);
+    int kDown = glfwGetKey(w, GLFW_KEY_DOWN);
+    int kLeft = glfwGetKey(w, GLFW_KEY_LEFT);
+    int kRight = glfwGetKey(w, GLFW_KEY_RIGHT);
+    int kEsc = glfwGetKey(w, GLFW_KEY_ESCAPE);
+
+    if (kUp == GLFW_PRESS && prevUp == GLFW_RELEASE)   focus = 0;
+    if (kDown == GLFW_PRESS && prevDown == GLFW_RELEASE) focus = 1;
+
+    if (kLeft == GLFW_PRESS && prevLeft == GLFW_RELEASE) {
+        if (focus == 0) Config::power_coeff -= 0.05f;
+        else {
+            Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
+            Config::velocity_multiplier = Config::linear_damping;
+        }
+    }
+    if (kRight == GLFW_PRESS && prevRight == GLFW_RELEASE) {
+        if (focus == 0) Config::power_coeff += 0.05f;
+        else {
+            Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
+            Config::velocity_multiplier = Config::linear_damping;
+        }
+    }
+    if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
+        settings_open_ = false;
+        selected_ = has_started ? 2 : 1;
+    }
+
+    prevUp = kUp; prevDown = kDown; prevLeft = kLeft; prevRight = kRight; prevEsc = kEsc;
+}
+
+
+void Menu::DrawHelpModal(bool has_started)
+{
+    AddText(0.5f, 0.62f, "[i] How to Play", Ui(1.1f), Alignment::CENTER, true);
+
+    RenderHelpBlock(*this, /*u*/0.5f, /*vTop*/0.56f, Alignment::CENTER,
+        Ui(0.75f), /*lineGap*/0.045f);
+
+    if (button(0.5f, 0.56f - 7 * 0.045f - 0.05f, "Close [Esc]", Ui(0.8f), Alignment::CENTER, false, nullptr, nullptr)) {
+        help_open_ = false;
+        selected_ = has_started ? 3 : 2;
+    }
+
+    static int prevEscHelp = GLFW_RELEASE;
+    GLFWwindow* w = glfwGetCurrentContext();
+    int kEsc = glfwGetKey(w, GLFW_KEY_ESCAPE);
+    if (kEsc == GLFW_PRESS && prevEscHelp == GLFW_RELEASE) {
+        help_open_ = false;
+        selected_ = has_started ? 3 : 2;
+    }
+    prevEscHelp = kEsc;
+}
+
+void Menu::DrawSettingsIcon(int /*winW*/, int /*winH*/)
+{
+    // Shown only when ui_settings_open_ == false (caller guards this)
+    if (button(0.97f, 0.06f, "*", Ui(1.1f), Alignment::RIGHT, false, nullptr, nullptr)) {
+        ui_settings_open_ = true;
+        active_input_ = -1;
+    }
+}
+
+
+void Menu::DrawUiSettingsModal(bool has_started)
+{
+    // More vertical breathing room
+    const float headV = 0.66f;
+    const float row1V = 0.56f; // UI scale
+    const float row2V = 0.46f; // Player 1
+    const float row3V = 0.38f; // Player 2
+    const float hintV = 0.33f; // locked hint
+    const float closeV = 0.28f; // Close
+
+    AddText(0.5f, headV, "Settings", Ui(1.1f), Alignment::CENTER, true);
+
+    // --- UI Scale presets (50/75/100) laid out by measured width with fixed px gap ---
+    struct Opt { const char* txt; float val; };
+    static constexpr Opt kOpts[] = { {"50%",0.50f}, {"75%",0.75f}, {"100%",1.00f} };
+    static constexpr int kOptCount = 3;
+
+    const float cbScale = Ui(0.90f);
+    const float gapPx = 36.0f * ui_scale_; // consistent physical gap
+    std::string labels[kOptCount];
+    float widths[kOptCount];
+    float totalPx = 0.0f;
+
+    for (int i = 0; i < kOptCount; ++i) {
+        const bool on = std::fabs(ui_scale_ - kOpts[i].val) < 0.001f;
+        labels[i] = std::string(on ? "[x] " : "[ ] ") + kOpts[i].txt;
+        // include UI scale in width to match what’s drawn
+        widths[i] = estimateWidthPx(labels[i], cbScale) * ui_scale_;
+        totalPx += widths[i];
+    }
+    totalPx += gapPx * (kOptCount - 1);
+
+    float x = 0.5f * width_ - 0.5f * totalPx;  // left edge so the whole row is centered
+    for (int i = 0; i < kOptCount; ++i) {
+        const bool on = std::fabs(ui_scale_ - kOpts[i].val) < 0.001f;
+        const float centerU = (x + widths[i] * 0.5f) / static_cast<float>(width_);
+        if (button(centerU, row1V, labels[i], cbScale, Alignment::CENTER, on, nullptr, nullptr)) {
+            ui_scale_ = kOpts[i].val;
+        }
+        x += widths[i] + gapPx;
+    }
+
+    // --- Player names (gated by reset) ---
+    const bool canEditNames = (!has_started) || rename_gate_open_;
+
+    auto nameRow = [&](float v, const char* label, int fieldIndex, std::string& target)
+        {
+            std::string field = target;
+            if (active_input_ == fieldIndex && canEditNames) {
+                const bool caretOn = std::fmod(glfwGetTime(), 1.0) < 0.5;
+                field += caretOn ? "|" : " ";
+            }
+            AddText(0.5f, v, std::string(label) + field, Ui(0.95f), Alignment::CENTER, active_input_ == fieldIndex);
+
+            if (!canEditNames) return;
+
+            const float labelW = estimateWidthPx(label, Ui(0.95f)) * ui_scale_;
+            const float fieldW = std::max(240.0f * ui_scale_, estimateWidthPx("MMMMMMMMMMMMMMMM", Ui(0.95f)) * ui_scale_);
+            const float pxMid = 0.5f * width_;
+            const float x0 = pxMid - (labelW + fieldW) * 0.5f + labelW;
+            const float x1 = x0 + fieldW;
+            const float y = v * height_;
+            const float h = estimateHeightPx(Ui(0.95f)) * ui_scale_;
+            const float y0 = y - h * 0.5f, y1 = y + h * 0.5f;
+
+            if (mouse_edge_down_ && mouse_x_ >= x0 && mouse_x_ <= x1 && mouse_y_ >= y0 && mouse_y_ <= y1) {
+                active_input_ = fieldIndex;
+            }
+        };
+
+    nameRow(row2V, "Player 1: ", 0, p1_name_);
+    nameRow(row3V, "Player 2: ", 1, p2_name_);
+
+    // typing (unchanged)
+    if (canEditNames && (active_input_ == 0 || active_input_ == 1)) {
+        GLFWwindow* w = glfwGetCurrentContext();
+        auto& target = (active_input_ == 0 ? p1_name_ : p2_name_);
+        const size_t maxLen = 18;
+
+        auto keyEdge = [&](int key)->bool {
+            static int prev[512] = { 0 };
+            int cur = glfwGetKey(w, key);
+            bool e = (cur == GLFW_PRESS && prev[key] == GLFW_RELEASE);
+            prev[key] = cur; return e;
+            };
+        const bool shift = (glfwGetKey(w, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ||
+            (glfwGetKey(w, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
+
+        if (keyEdge(GLFW_KEY_BACKSPACE)) {
+            if (!target.empty()) { target.pop_back(); names_dirty_ = true; }
+        }
+        if (keyEdge(GLFW_KEY_ENTER) || keyEdge(GLFW_KEY_KP_ENTER)) active_input_ = -1;
+
+        for (int k = GLFW_KEY_A; k <= GLFW_KEY_Z; ++k) if (keyEdge(k)) {
+            char c = static_cast<char>('a' + (k - GLFW_KEY_A));
+            if (shift) c = static_cast<char>(std::toupper(c));
+            if (target.size() < maxLen) { target.push_back(c); names_dirty_ = true; }
+        }
+        for (int k = GLFW_KEY_0; k <= GLFW_KEY_9; ++k) if (keyEdge(k)) {
+            char c = static_cast<char>('0' + (k - GLFW_KEY_0));
+            if (target.size() < maxLen) { target.push_back(c); names_dirty_ = true; }
+        }
+        if (keyEdge(GLFW_KEY_SPACE)) { if (target.size() < maxLen) { target.push_back(' '); names_dirty_ = true; } }
+        if (keyEdge(GLFW_KEY_MINUS)) { if (target.size() < maxLen) { target.push_back(shift ? '_' : '-'); names_dirty_ = true; } }
+
+
+        if (has_started && !rename_gate_open_) {
+            AddText(0.5f, hintV, "Names are editable after Reset game.", Ui(0.75f), Alignment::CENTER, false);
+        }
+
+        if (button(0.5f, closeV, "Close [Esc]", Ui(0.85f), Alignment::CENTER, false, nullptr, nullptr)) {
+            ui_settings_open_ = false;
+            active_input_ = -1;
+            rename_gate_open_ = false; // one-time gate
+        }
+
+        static int prevEsc = GLFW_RELEASE;
+        const int kEsc = glfwGetKey(glfwGetCurrentContext(), GLFW_KEY_ESCAPE);
+        if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
+            ui_settings_open_ = false;
+            active_input_ = -1;
+            rename_gate_open_ = false;
+        }
+        prevEsc = kEsc;
+    }
+}
+
+
 void Menu::Draw(const bool not_loaded, const bool has_started)
 {
     texts_.clear();
@@ -99,310 +445,38 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     double mx, my; glfwGetCursorPos(w, &mx, &my);
     const float mouseX = static_cast<float>(mx);
     const float mouseY = static_cast<float>(winH - my);
+    mouse_x_ = mouseX; mouse_y_ = mouseY;
 
-    mouse_x_ = mouseX;
-    mouse_y_ = mouseY;
-
-    // current input states
     static int prevMouse = GLFW_RELEASE;
-    const int  curMouse = glfwGetMouseButton(w, GLFW_MOUSE_BUTTON_LEFT);
-
+    const  int curMouse = glfwGetMouseButton(w, GLFW_MOUSE_BUTTON_LEFT);
     static int prevEnter = GLFW_RELEASE;
-    const int  curEnter = glfwGetKey(w, GLFW_KEY_ENTER);
+    const  int curEnter = glfwGetKey(w, GLFW_KEY_ENTER);
 
-    // --- robust mouse click edge (+debounce) ---
-    static double lastClickTime = 0.0;
-    const double now = glfwGetTime();
-
-    const bool pressEdge = (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
-    const bool releaseEdge = (curMouse == GLFW_RELEASE && prevMouse == GLFW_PRESS);
-
-    // fire at most once per 100 ms
     mouse_edge_down_ = (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
 
-    const bool modalOpen = settings_open_ || help_open_;
+    const bool modalOpen = settings_open_ || help_open_ || ui_settings_open_;
 
-    // Normal keyboard navigation only when no modal is open
-    if (!modalOpen) {
-        ControlState();
-    }
-
-    // Selection order:
-    //  - not started: 0=Play, 1=Quick Setup, 2=How to Play
-    //  - started (pause center list): 0=Resume, 1=Reset, 2=Quick Setup, 3=How to Play, 4=Exit
-    std::vector<int> items;
-    if (!has_started) { items = { 0, 1, 2 }; }
-    else { items = { 0, 1, 2, 3, 4 }; }
-
-    if (selected_ != -1) {
-        if (selected_ < 0) selected_ = static_cast<int>(items.size()) - 1;
-        if (selected_ >= static_cast<int>(items.size())) selected_ = 0;
-    }
-
-    // Button helper with micro-animation: slight scale-up on hover/selection
-    auto drawButton = [&](float u, float v, const std::string& label, float scale,
-        Alignment align, bool emphasize, bool isSelected) -> bool
-        {
-            const float px = u * winW;
-            const float py = v * winH;
-
-            float localScale = scale;
-
-            // rect based on *base* scale
-            const float baseW = estimateWidthPx(label, scale);
-            const float baseH = estimateHeightPx(scale);
-
-            float x0, x1;
-            if (align == Alignment::CENTER) { x0 = px - baseW * 0.5f; x1 = px + baseW * 0.5f; }
-            else if (align == Alignment::RIGHT) { x0 = px - baseW; x1 = px; }
-            else { x0 = px; x1 = px + baseW; }
-            const float y0 = py - baseH * 0.5f;
-            const float y1 = py + baseH * 0.5f;
-
-            const bool hover = (mouseX >= x0 && mouseX <= x1 && mouseY >= y0 && mouseY <= y1);
-            if (hover || isSelected) localScale *= 1.05f;  // micro-animation
-
-            AddText(u, v, label, localScale, align, emphasize || hover || isSelected);
-
-            // CLICK requires hover + global edge flag (robust)
-            const bool clicked = hover && mouse_edge_down_;
-            return clicked;
-        };
-
-    auto isEnterOn = [&](int logicalIndex)->bool {
-        if (selected_ == -1) return false;
-        const bool pressed = (curEnter == GLFW_PRESS && prevEnter == GLFW_RELEASE);
-        return pressed && (selected_ == logicalIndex);
-        };
+    if (!modalOpen) ControlState();
 
     // Title
-    AddText(0.5f, 0.90f, "8 Ball Pool", 2.0f, Alignment::CENTER);
+    AddText(0.5f, 0.90f, "8 Ball Pool", Ui(2.0f), Alignment::CENTER);
 
-    // ==============================================================
-    //   NO GAME STARTED — initial menu layout
-    // ==============================================================
-    if (!has_started) {
-        // Play
-        const bool playSelected = (selected_ == 0);
-        const bool playClicked = !modalOpen && (
-            drawButton(0.5f, 0.70f, "Play", 1.05f, Alignment::CENTER, false, playSelected) || isEnterOn(0)
-            );
-        if (playClicked) play_clicked_ = true;
+    // Main vs Pause
+    if (!has_started) DrawMainMenu(modalOpen, winW, winH, mouseX, mouseY, curEnter, prevEnter, selected_);
+    else              DrawPauseMenu(modalOpen, winW, winH, mouseX, mouseY, curEnter, prevEnter, selected_);
 
-        // Quick Setup (with > / v symbol)
-        if (!settings_open_) {
-            const bool condSelected = (selected_ == 1);
-            const char* dd = settings_open_ ? "v" : ">";
-            const bool condClicked = !modalOpen && drawButton(
-                0.10f, 0.18f, std::string(dd) + "  Quick Setup", 0.85f,
-                Alignment::LEFT, false, condSelected);
-            if (condClicked || isEnterOn(1)) {
-                settings_open_ = true;
-                selected_ = 1;
-            }
-        }
+    // Modals
+    if (settings_open_)    DrawQuickSetupModal(winW, winH, mouseX, mouseY, has_started);
+    if (help_open_)        DrawHelpModal(has_started);
+    if (ui_settings_open_) DrawUiSettingsModal(has_started);
 
-        // How to Play (with [i] symbol)
-        if (!help_open_) {
-            const bool helpSelected = (selected_ == 2);
-            const bool helpClicked = !modalOpen && drawButton(
-                0.10f, 0.10f, "[i] How to Play", 0.90f,
-                Alignment::LEFT, false, helpSelected);
-            if (helpClicked || isEnterOn(2)) {
-                help_open_ = true;
-                selected_ = 2;
-            }
-        }
-    }
-    // ==============================================================
-    //   GAME STARTED — pause menu in the CENTER
-    // ==============================================================
-    else {
-        if (!modalOpen) {
-            // Resume (kept at the same top-center place)
-            const bool resumeSelected = (selected_ == 0);
-            const bool resumeClicked = drawButton(0.5f, 0.84f,
-                "Resume game", 1.05f, Alignment::CENTER, false, resumeSelected)
-                || isEnterOn(0);
-            if (resumeClicked) play_clicked_ = true;
-
-            // Vertical list in the center (with symbols)
-            const float startV = 0.62f;
-            const float stepV = 0.08f;
-
-            // 1) Reset
-            const bool resetSelected = (selected_ == 1);
-            if (drawButton(0.5f, startV + 0 * stepV, "Reset game", 0.90f,
-                Alignment::CENTER, false, resetSelected) || isEnterOn(1)) {
-                reset_clicked_ = true;
-            }
-
-            // 2) Quick Setup (show > or v accordingly)
-            const bool condSelected = (selected_ == 2);
-            const char* dd = settings_open_ ? "v" : ">";
-            if (drawButton(0.5f, startV - 1 * stepV, std::string(dd) + "  Quick Setup", 0.90f,
-                Alignment::CENTER, false, condSelected) || isEnterOn(2)) {
-                settings_open_ = true;
-                selected_ = 2;
-            }
-
-            // 3) How to Play
-            const bool helpSelected = (selected_ == 3);
-            if (drawButton(0.5f, startV - 2 * stepV, "[i] How to Play", 0.90f,
-                Alignment::CENTER, false, helpSelected) || isEnterOn(3)) {
-                help_open_ = true;
-                selected_ = 3;
-            }
-
-            // 4) Exit
-            const bool exitSelected = (selected_ == 4);
-            if (drawButton(0.5f, startV - 3 * stepV, "Exit game", 0.90f,
-                Alignment::CENTER, false, exitSelected) || isEnterOn(4)) {
-                exit_clicked_ = true;
-            }
-        }
+    if (!ui_settings_open_) {
+        DrawSettingsIcon(winW, winH);
     }
 
-    // =========================
-    //  Modal: Quick Setup (RIGHT)
-    // =========================
-    if (settings_open_) {
-        static int focus = 0; // 0 = strike force, 1 = friction
-
-        const float panelU = 0.42f;
-        const float headV = 0.60f;
-        const float row1V = 0.54f;
-        const float row2V = 0.49f;
-        const float closeV = 0.43f;
-
-        AddText(panelU, headV, "Quick Setup  v", 0.9f, Alignment::LEFT, true);
-
-
-        const float lineScale = 0.8f;
-
-        // -------- Strike force (hover highlight; arrows only change) --------
-        std::string sf = std::format("Strike force: {:.2f}", Config::power_coeff);
-        float sfWidthPx = estimateWidthPx(sf, lineScale);
-        const float sfX0 = panelU * winW;
-        const float sfX1 = sfX0 + sfWidthPx;
-
-        const float rowH = estimateHeightPx(lineScale);
-        const float row1Y0 = row1V * winH - rowH * 0.5f;
-        const float row1Y1 = row1V * winH + rowH * 0.5f;
-
-        const bool row1Hover = (mouseX >= sfX0 && mouseX <= sfX1 && mouseY >= row1Y0 && mouseY <= row1Y1);
-        if (row1Hover) focus = 0;
-        AddText(panelU, row1V, sf, lineScale, Alignment::LEFT, (focus == 0) || row1Hover);
-
-        // Inline arrows (ONLY these change the value)
-        float leftU = (sfX0 + sfWidthPx + 18.0f) / winW;
-        float rightU = (sfX0 + sfWidthPx + 48.0f) / winW;
-        if (button(leftU, row1V, "<", lineScale, Alignment::CENTER, false, nullptr, nullptr))
-            Config::power_coeff -= 0.05f;
-        if (button(rightU, row1V, ">", lineScale, Alignment::CENTER, false, nullptr, nullptr))
-            Config::power_coeff += 0.05f;
-
-        // -------- Ball friction (hover highlight; arrows only change) --------
-        std::string bf = std::format("Ball friction: {:.4f}", Config::linear_damping);
-        float bfWidthPx = estimateWidthPx(bf, lineScale);
-        const float bfX0 = panelU * winW;
-        const float bfX1 = bfX0 + bfWidthPx;
-
-        const float row2Y0 = row2V * winH - rowH * 0.5f;
-        const float row2Y1 = row2V * winH + rowH * 0.5f;
-
-        const bool row2Hover = (mouseX >= bfX0 && mouseX <= bfX1 && mouseY >= row2Y0 && mouseY <= row2Y1);
-        if (row2Hover) focus = 1;
-        AddText(panelU, row2V, bf, lineScale, Alignment::LEFT, (focus == 1) || row2Hover);
-
-        leftU = (bfX0 + bfWidthPx + 18.0f) / winW;
-        rightU = (bfX0 + bfWidthPx + 48.0f) / winW;
-
-        // Expanded range + smaller step (±0.0005); ONLY arrows apply changes
-        if (button(leftU, row2V, "<", lineScale, Alignment::CENTER, false, nullptr, nullptr)) {
-            Config::linear_damping = std::max(0.940f, std::min(0.9995f, Config::linear_damping - 0.0005f));
-            Config::velocity_multiplier = Config::linear_damping;
-        }
-        if (button(rightU, row2V, ">", lineScale, Alignment::CENTER, false, nullptr, nullptr)) {
-            Config::linear_damping = std::max(0.940f, std::min(0.9995f, Config::linear_damping + 0.0005f));
-            Config::velocity_multiplier = Config::linear_damping;
-        }
-
-        // Close
-        if (drawButton(panelU, closeV, "Close [Esc]", 0.8f, Alignment::LEFT, false, false)) {
-            settings_open_ = false;
-            selected_ = has_started ? 2 : 1;
-        }
-
-
-        // Modal keyboard capture
-        static int prevUp = GLFW_RELEASE, prevDown = GLFW_RELEASE, prevLeft = GLFW_RELEASE, prevRight = GLFW_RELEASE, prevEsc = GLFW_RELEASE;
-        int kUp = glfwGetKey(w, GLFW_KEY_UP);
-        int kDown = glfwGetKey(w, GLFW_KEY_DOWN);
-        int kLeft = glfwGetKey(w, GLFW_KEY_LEFT);
-        int kRight = glfwGetKey(w, GLFW_KEY_RIGHT);
-        int kEsc = glfwGetKey(w, GLFW_KEY_ESCAPE);
-
-        if (kUp == GLFW_PRESS && prevUp == GLFW_RELEASE) focus = 0;
-        if (kDown == GLFW_PRESS && prevDown == GLFW_RELEASE) focus = 1;
-
-        if (kLeft == GLFW_PRESS && prevLeft == GLFW_RELEASE) {
-            if (focus == 0) Config::power_coeff -= 0.05f;
-            else {
-                Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
-                Config::velocity_multiplier = Config::linear_damping;
-            }
-        }
-        if (kRight == GLFW_PRESS && prevRight == GLFW_RELEASE) {
-            if (focus == 0) Config::power_coeff += 0.05f;
-            else {
-                Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
-                Config::velocity_multiplier = Config::linear_damping;
-            }
-        }
-        if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
-            settings_open_ = false;
-            selected_ = has_started ? 2 : 1;
-        }
-
-        prevUp = kUp; prevDown = kDown; prevLeft = kLeft; prevRight = kRight; prevEsc = kEsc;
-    }
-
-    // =========================
-    //  Modal:  How to Play (CENTER)
-    // =========================
-    if (help_open_) {
-        AddText(0.5f, 0.62f, "[i] How to Play", 1.1f, Alignment::CENTER, true);
-
-        RenderHelpBlock(*this,
-            /*u*/0.5f,
-            /*vTop*/0.56f,
-            /*align*/Alignment::CENTER,
-            /*scale*/0.75f,
-            /*lineGap*/0.045f);
-
-        if (drawButton(0.5f, 0.56f - 7 * 0.045f - 0.05f, "Close [Esc]", 0.8f, Alignment::CENTER, false, false)) {
-            help_open_ = false;
-            selected_ = has_started ? 3 : 2;
-        }
-
-        static int prevEscHelp = GLFW_RELEASE;
-        int kEsc = glfwGetKey(w, GLFW_KEY_ESCAPE);
-        if (kEsc == GLFW_PRESS && prevEscHelp == GLFW_RELEASE) {
-            help_open_ = false;
-            selected_ = has_started ? 3 : 2;
-        }
-        prevEscHelp = kEsc;
-    }
-
-    // ---- end-of-frame: update trackers (must be last) ----
     prevMouse = curMouse;
     prevEnter = curEnter;
 }
-
-bool Menu::ConsumePlayClicked() { bool b = play_clicked_;  play_clicked_ = false; return b; }
-bool Menu::ConsumeExitClicked() { bool b = exit_clicked_;  exit_clicked_ = false; return b; }
-bool Menu::ConsumeResetClicked() { bool b = reset_clicked_; reset_clicked_ = false; return b; }
 
 void Menu::ControlState()
 {
@@ -426,5 +500,6 @@ void Menu::ControlState()
 void Menu::AddText(const float u, const float v, const std::string& text,
     const float scale, Alignment alignment, const bool selected)
 {
-    texts_.emplace_back(u * width_, v * height_, text, scale, alignment, selected);
+    // multiply the per-item scale; TextRenderer already multiplies this into its font_scale_
+    texts_.emplace_back(u * width_, v * height_, text, scale * ui_scale_, alignment, selected);
 }

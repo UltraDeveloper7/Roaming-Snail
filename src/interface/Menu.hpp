@@ -36,6 +36,13 @@ public:
 	void Update(int width, int height);
 	void AddText(float u, float v, const std::string& text, float scale = 1.0f, Alignment alignment = Alignment::LEFT, bool selected = false);
 
+	// Read current names (for initial sync when the world is first created)
+	const std::string& P1Name() const { return p1_name_; }
+	const std::string& P2Name() const { return p2_name_; }
+
+	// One-shot “consume if changed” (prevents spamming updates every frame)
+	bool ConsumeEditedNames(std::string& outP1, std::string& outP2);
+
 
 	// click events (edge-triggered: true once per frame when clicked)
 	bool ConsumePlayClicked();
@@ -43,11 +50,41 @@ public:
 	bool ConsumeResetClicked();
 
 	// settings dropdown state (read-only)
-	bool IsSettingsOpen() const { return settings_open_; }
+	bool IsSettingsOpen() const { return settings_open_ || ui_settings_open_;
+	}
 	bool IsHelpOpen()     const { return help_open_; }
 
 
 private:
+
+	// ---------- UI scale + names ----------
+	float ui_scale_ = 1.0f;                 // global UI multiplier
+	static constexpr float kUiMin_ = 0.50f;
+	static constexpr float kUiMax_ = 1.25f;
+
+	bool names_dirty_ = false; // set true whenever the user edits P1/P2
+	std::string p1_name_ = "Player 1";
+	std::string p2_name_ = "Player 2";
+
+
+	int  active_input_ = -1;                // -1 none, 0=P1, 1=P2
+	bool ui_settings_open_ = false;         // NEW: central Settings modal
+	bool rename_gate_open_ = false;         // set true when "Reset game" clicked (pause)
+
+	// ---------- helpers ----------
+	void DrawMainMenu(bool modalOpen, int winW, int winH,
+		float mouseX, float mouseY, int curEnter,
+		int& prevEnter, int& selected);
+	void DrawPauseMenu(bool modalOpen, int winW, int winH,
+		float mouseX, float mouseY, int curEnter,
+		int& prevEnter, int& selected);
+	void DrawQuickSetupModal(int winW, int winH, float mouseX, float mouseY, bool has_started);
+	void DrawHelpModal(bool has_started);
+	void DrawSettingsIcon(int winW, int winH);         // bottom-right launcher
+	void DrawUiSettingsModal(bool has_started);        // centered modal
+
+	inline float Ui(float s) const { return s * ui_scale_; }
+
 	void ControlState();
 	void beginFrameCaptureMouse();
 	bool button(float u, float v, const std::string& label, float scale,

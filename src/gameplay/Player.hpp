@@ -10,6 +10,8 @@ public:
     [[nodiscard]] int GetScore() const { return score_; }
     [[nodiscard]] const std::string& GetName() const { return name_; }
 
+    void SetName(const std::string& n) { name_ = n; }
+
 private:
     std::string name_;
     int score_;

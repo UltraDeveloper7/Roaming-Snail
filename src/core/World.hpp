@@ -45,6 +45,7 @@ public:
 
 
 	void ResetPlayerIndex() { state_.ResetPlayerIndex(); }
+	void UpdatePlayerNames(const std::string& p1, const std::string& p2);
 	void ResetGame();
 
 

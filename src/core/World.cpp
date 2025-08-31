@@ -232,6 +232,13 @@ void World::ResetGame() {
 }
 
 
+void World::UpdatePlayerNames(const std::string& p1, const std::string& p2) {
+	auto& ps = state_.Players();            // you already use this in ResetGame()
+	if (ps.size() >= 1) ps[0].SetName(p1);
+	if (ps.size() >= 2) ps[1].SetName(p2);
+}
+
+
 void World::HandleBallsCollision(const int number)
 {
 	for (int j = number + 1; j < (int)balls_.size(); ++j) {

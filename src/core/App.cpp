@@ -259,7 +259,10 @@ void App::OnUpdate()
 	if (world_) {
 		const auto& players = world_->GetPlayers();
 		const auto& current_player = players[world_->GetCurrentPlayerIndex()];
-		menu_->AddText(0.0f, 0.95f, "Current Player: " + current_player.GetName(), 0.6f);
+		int curIdx = world_->GetCurrentPlayerIndex();
+		const std::string& shownName = players[curIdx].GetName(); // use synced, real player name
+		menu_->AddText(0.0f, 0.95f, "Current Player: " + shownName, 0.6f);
+
 
 		float clockSec = world_->GetShotClock();
 		menu_->AddText(0.0f, 0.90f, "Shot Clock: " + std::to_string((int)clockSec), 0.6f);
@@ -289,6 +292,7 @@ void App::OnUpdate()
 				Load();
 				has_started_ = true;            // mark game as started
 				world_->ResetPlayerIndex();
+				world_->UpdatePlayerNames(menu_->P1Name(), menu_->P2Name());
 				last_frame_ = glfwGetTime();
 			}
 		}
@@ -296,10 +300,19 @@ void App::OnUpdate()
 		if (menu_->ConsumeResetClicked() && world_) {
 			world_->Reset();
 			world_->ResetGame();
+			world_->UpdatePlayerNames(menu_->P1Name(), menu_->P2Name()); // update names on reset
 		}
 		// Exit
 		if (menu_->ConsumeExitClicked()) {
 			window_->SetCloseFlag();
+		}
+	}
+
+	// Push any newly edited names into the actual players
+	if (world_) {
+		std::string n1, n2;
+		if (menu_->ConsumeEditedNames(n1, n2)) {
+			world_->UpdatePlayerNames(n1, n2);
 		}
 	}
 
