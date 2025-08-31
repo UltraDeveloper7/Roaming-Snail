@@ -1,8 +1,7 @@
 # 8 Ball Pool
-<img width="1909" height="1071" alt="image" src="https://github.com/user-attachments/assets/b38cd14a-42c5-48fb-8d7b-9e60353b6d0d" />
+<img width="1913" height="1030" alt="image" src="https://github.com/user-attachments/assets/8bdfac36-bcbe-43e8-8447-a146ecaccd1f" />
 <img width="1916" height="1027" alt="image" src="https://github.com/user-attachments/assets/dfebbd5c-f0f7-4379-b602-6f62de0fb701" />
-<img width="1917" height="1027" alt="image" src="https://github.com/user-attachments/assets/1cb3a7ab-a04a-4eb6-a5d6-1f533137390a" />
-
+<img width="1917" height="1032" alt="image" src="https://github.com/user-attachments/assets/11e251f8-87f1-4526-8501-612f7088a58f" />
 
 ## Overview
 This repository contains the source code for a dual-player Billiards game created with OpenGL in Visual Studio. The game provides an immersive billiards experience with realistic graphics, physics, and customizable settings.
