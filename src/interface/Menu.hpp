@@ -85,7 +85,7 @@ private:
 		int& prevEnter, int& selected);
 	void DrawQuickSetupModal(int winW, int winH, float mouseX, float mouseY, bool has_started);
 	void DrawHelpModal(bool has_started);
-	void DrawSettingsIcon(int winW, int winH);         // bottom-right launcher
+	bool DrawSettingsIcon(int winW, int winH, bool selected);         // bottom-right launcher
 	void DrawUiSettingsModal(bool has_started);        // centered modal
 
 	inline float Ui(float s) const { return s * ui_scale_; }

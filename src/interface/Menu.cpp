@@ -426,88 +426,131 @@ void Menu::DrawHelpModal(bool has_started)
 }
 
 
-void Menu::DrawSettingsIcon(int /*winW*/, int /*winH*/)
+bool Menu::DrawSettingsIcon(int /*winW*/, int /*winH*/, bool selected)
 {
     const float iconScale = Ui(1.1f);
     const float iconH_px = estimateHeightPx(iconScale);
     auto vpx = [&](float px) { return px / static_cast<float>(height_); };
 
-    // center of the icon row a bit above the bottom (margin ~ icon height)
+    // a bit above the bottom
     const float v = vpx(iconH_px * 1.1f);
 
-    if (button(0.97f, v, ICON_SETTINGS, iconScale, Alignment::RIGHT, false, nullptr, nullptr)) {
-        ui_settings_open_ = true;
-        active_input_ = -1;
-    }
+    // return true on mouse click; highlight when selected by keyboard
+    return button(0.97f, v, ICON_SETTINGS, iconScale, Alignment::RIGHT, selected, nullptr, nullptr);
 }
+
 
 
 void Menu::DrawUiSettingsModal(bool has_started)
 {
-    // --- dynamic, pixel-based spacing tied to current font size ---
+    // --- spacing helpers ---
     auto vpx = [&](float px) { return px / static_cast<float>(height_); };
 
     const float titleScale = Ui(1.10f);
     const float rowScale = Ui(0.95f);
     const float cbScale = Ui(0.90f);
 
-    // one line height at current scale
     const float lineH_px = estimateHeightPx(rowScale);
-
-    // gap between rows ~ 1.25 line-height
     const float gap_px = lineH_px * 1.25f;
 
-    const float headV = 0.70f;                 // anchor in NDC (keep your title anchor)
-    const float row1V = headV - vpx(gap_px);
-    const float guideV = row1V - vpx(gap_px);
-    const float row2V = guideV - vpx(gap_px * 1.20f); // a bit more gap under guide
-    const float row3V = row2V - vpx(gap_px);
+    const float headV = 0.70f;
+    const float row1V = headV - vpx(gap_px);                 // UI scale row
+    const float guideV = row1V - vpx(gap_px);                 // guideline row
+    const float row2V = guideV - vpx(gap_px * 1.20f);        // Player 1
+    const float row3V = row2V - vpx(gap_px);                 // Player 2
     const float hintV = row3V - vpx(gap_px * 0.90f);
-    const float closeV = hintV - vpx(gap_px);
+    const float closeV = hintV - vpx(gap_px);                 // Close
 
     AddText(0.5f, headV, std::string(ICON_SETTINGS) + "  Settings",
         titleScale, Alignment::CENTER, true);
 
+    // -------------------------------
+    // Keyboard focus & key edges
+    // 0 = UI scale, 1 = Guideline, 2 = Player1, 3 = Player2, 4 = Close
+    // -------------------------------
+    static int uiFocus = 0;
+    GLFWwindow* w = glfwGetCurrentContext();
 
-    // --- UI Scale presets (50/75/100) ---
+    static int prevUp = GLFW_RELEASE, prevDown = GLFW_RELEASE, prevLeft = GLFW_RELEASE, prevRight = GLFW_RELEASE,
+        prevEnter = GLFW_RELEASE, prevTab = GLFW_RELEASE, prevEsc = GLFW_RELEASE;
+    const int kUp = glfwGetKey(w, GLFW_KEY_UP);
+    const int kDown = glfwGetKey(w, GLFW_KEY_DOWN);
+    const int kLeft = glfwGetKey(w, GLFW_KEY_LEFT);
+    const int kRight = glfwGetKey(w, GLFW_KEY_RIGHT);
+    const int kEnter = glfwGetKey(w, GLFW_KEY_ENTER);
+    const int kEnter2 = glfwGetKey(w, GLFW_KEY_KP_ENTER);
+    const int kTab = glfwGetKey(w, GLFW_KEY_TAB);
+    const int kEsc = glfwGetKey(w, GLFW_KEY_ESCAPE);
+
+    const bool upEdge = (kUp == GLFW_PRESS && prevUp == GLFW_RELEASE);
+    const bool downEdge = (kDown == GLFW_PRESS && prevDown == GLFW_RELEASE);
+    const bool leftEdge = (kLeft == GLFW_PRESS && prevLeft == GLFW_RELEASE);
+    const bool rightEdge = (kRight == GLFW_PRESS && prevRight == GLFW_RELEASE);
+    const bool enterEdge = ((kEnter == GLFW_PRESS || kEnter2 == GLFW_PRESS) && prevEnter == GLFW_RELEASE);
+    const bool tabEdge = (kTab == GLFW_PRESS && prevTab == GLFW_RELEASE);
+
+    auto wrap = [](int v, int lo, int hi) { int n = hi - lo + 1; v = (v - lo + n) % n; return lo + v; };
+
+    // --- gating for name edits (only editable before game start or after Reset) ---
+    const bool canEditNames = (!has_started) || rename_gate_open_;
+
+    // -------------------------------
+    // UI Scale row (50/75/100)
+    // -------------------------------
     struct Opt { const char* txt; float val; };
     static constexpr Opt kOpts[] = { {"50%",0.50f}, {"75%",0.75f}, {"100%",1.00f} };
     static constexpr int kOptCount = 3;
 
-    const float colGapPx = lineH_px * 0.60f;  // gap between columns ~0.6 line-height
+    const float colGapPx = lineH_px * 0.60f;
 
     std::string labels[kOptCount];
-    float widths[kOptCount] = { 0 };
+    float widths[kOptCount] = { 0,0,0 };
     float totalPx = 0.0f;
 
     for (int i = 0; i < kOptCount; ++i) {
         const bool on = std::fabs(ui_scale_ - kOpts[i].val) < 0.001f;
         labels[i] = std::string(on ? "[x] " : "[ ] ") + kOpts[i].txt;
-        widths[i] = estimateWidthPx(labels[i], cbScale); // <-- no extra * ui_scale_
+        widths[i] = estimateWidthPx(labels[i], cbScale);
         totalPx += widths[i];
     }
     totalPx += colGapPx * (kOptCount - 1);
 
-    float x = 0.5f * width_ - 0.5f * totalPx;  // left edge so the whole row is centered
+    float x = 0.5f * width_ - 0.5f * totalPx;
     for (int i = 0; i < kOptCount; ++i) {
         const bool on = std::fabs(ui_scale_ - kOpts[i].val) < 0.001f;
         const float centerU = (x + widths[i] * 0.5f) / static_cast<float>(width_);
-        if (button(centerU, row1V, labels[i], cbScale, Alignment::CENTER, on, nullptr, nullptr)) {
+        if (button(centerU, row1V, labels[i], cbScale, Alignment::CENTER, (on || uiFocus == 0), nullptr, nullptr)) {
             ui_scale_ = kOpts[i].val;
         }
         x += widths[i] + colGapPx;
     }
 
+    // Keyboard cycle UI scale when focused on row 0 (not editing)
+    if (active_input_ == -1 && uiFocus == 0) {
+        auto idxFromScale = [&]() {
+            int best = 0; float bd = 1e9f;
+            for (int i = 0; i < kOptCount; ++i) { float d = std::fabs(ui_scale_ - kOpts[i].val); if (d < bd) { bd = d; best = i; } }
+            return best;
+            };
+        int idx = idxFromScale();
+        if (leftEdge) { idx = std::max(0, idx - 1); ui_scale_ = kOpts[idx].val; }
+        if (rightEdge) { idx = std::min(kOptCount - 1, idx + 1); ui_scale_ = kOpts[idx].val; }
+    }
 
-    // --- Aiming guideline toggle ---
+    // -------------------------------
+    // Guideline toggle
+    // -------------------------------
     const std::string gLabel = std::string(show_guideline_ ? "[x] " : "[ ] ") + "Guideline";
-    if (button(0.5f, guideV, gLabel, Ui(0.90f), Alignment::CENTER, show_guideline_, nullptr, nullptr)) {
+    if (button(0.5f, guideV, gLabel, Ui(0.90f), Alignment::CENTER, (uiFocus == 1), nullptr, nullptr)) {
+        show_guideline_ = !show_guideline_;
+    }
+    if (active_input_ == -1 && uiFocus == 1 && (leftEdge || rightEdge || enterEdge)) {
         show_guideline_ = !show_guideline_;
     }
 
-    // --- Player names (gated by reset) ---
-    const bool canEditNames = (!has_started) || rename_gate_open_;
-
+    // -------------------------------
+    // Player names (with caret & mouse focus)
+    // -------------------------------
     auto nameRow = [&](float v, const char* label, int fieldIndex, std::string& target)
         {
             std::string field = target;
@@ -515,20 +558,21 @@ void Menu::DrawUiSettingsModal(bool has_started)
                 const bool caretOn = std::fmod(glfwGetTime(), 1.0) < 0.5;
                 field += caretOn ? "|" : " ";
             }
-            AddText(0.5f, v, std::string(label) + field, Ui(0.95f), Alignment::CENTER, active_input_ == fieldIndex);
+            // Highlight either when editing or when row is focused (2 or 3)
+            const bool rowFocused = (uiFocus == (fieldIndex == 0 ? 2 : 3));
+            AddText(0.5f, v, std::string(label) + field, Ui(0.95f), Alignment::CENTER,
+                (active_input_ == fieldIndex) || rowFocused);
 
             if (!canEditNames) return;
 
-            const float labelW = estimateWidthPx(label, Ui(0.95f));  // no * ui_scale_
-            const float fieldW = std::max(240.0f * ui_scale_,       // min width scales with UI
-                estimateWidthPx("MMMMMMMMMMMMMMMM", Ui(0.95f)));    // no * ui_scale_
+            const float labelW = estimateWidthPx(label, Ui(0.95f));
+            const float fieldW = std::max(240.0f * ui_scale_, estimateWidthPx("MMMMMMMMMMMMMMMM", Ui(0.95f)));
             const float pxMid = 0.5f * width_;
             const float x0 = pxMid - (labelW + fieldW) * 0.5f + labelW;
             const float x1 = x0 + fieldW;
             const float y = v * height_;
-            const float h = estimateHeightPx(Ui(0.95f));             // no * ui_scale_
+            const float h = estimateHeightPx(Ui(0.95f));
             const float y0 = y - h * 0.5f, y1 = y + h * 0.5f;
-
 
             if (mouse_edge_down_ && mouse_x_ >= x0 && mouse_x_ <= x1 && mouse_y_ >= y0 && mouse_y_ <= y1) {
                 active_input_ = fieldIndex;
@@ -538,67 +582,118 @@ void Menu::DrawUiSettingsModal(bool has_started)
     nameRow(row2V, "Player 1: ", 0, p1_name_);
     nameRow(row3V, "Player 2: ", 1, p2_name_);
 
-    // --- Typing handler (ONLY when a field is active) ---
+    // Start editing on Enter/Tab if focused on a name row and not already editing
+    if (canEditNames && active_input_ == -1) {
+        if (uiFocus == 2 && (enterEdge || tabEdge)) active_input_ = 0;
+        if (uiFocus == 3 && (enterEdge || tabEdge)) active_input_ = 1;
+    }
+
+    // -------------------------------
+    // Name typing handler (only when a field is active)
+    // - continuous Backspace
+    // - Enter/Tab advances P1 -> P2 -> Close
+    // - Esc exits the field
+    // -------------------------------
     if (canEditNames && (active_input_ == 0 || active_input_ == 1)) {
-        GLFWwindow* w = glfwGetCurrentContext();
         auto& target = (active_input_ == 0 ? p1_name_ : p2_name_);
         const int maxCodepoints = 18;
 
-        auto keyEdge = [&](int key)->bool {
-            static int prev[512] = { 0 };
-            int cur = glfwGetKey(w, key);
-            bool e = (cur == GLFW_PRESS && prev[key] == GLFW_RELEASE);
-            prev[key] = cur; return e;
-            };
-
-        // Backspace & Enter still via key events
-        if (keyEdge(GLFW_KEY_BACKSPACE)) {
-            // erase last UTF-8 codepoint
+        // helper to erase last UTF-8 codepoint
+        auto eraseLast = [&]() {
             if (!target.empty()) {
-                // step back over UTF-8 continuation bytes
                 size_t i = target.size();
                 do { --i; } while (i > 0 && (static_cast<unsigned char>(target[i]) & 0xC0) == 0x80);
                 target.erase(i);
                 names_dirty_ = true;
             }
-        }
-        if (keyEdge(GLFW_KEY_ENTER) || keyEdge(GLFW_KEY_KP_ENTER)) {
-            active_input_ = -1;
-        }
+            };
 
-        // Consume Unicode characters typed this frame
+        // Backspace auto-repeat
+        static bool   bsWasDown = false;
+        static double bsNext = 0.0;
+        bool   bsDown = (glfwGetKey(w, GLFW_KEY_BACKSPACE) == GLFW_PRESS);
+        double now = glfwGetTime();
+        if (bsDown) {
+            if (!bsWasDown) { eraseLast(); bsNext = now + 0.45; }   // initial delay
+            else if (now >= bsNext) { eraseLast(); bsNext = now + 0.04; } // repeat rate
+        }
+        bsWasDown = bsDown;
+
+        // Feed text from CharCallback, ignore newline/tab
         for (char32_t cp : g_charQueue) {
-            if (cp == U'\r' || cp == U'\n') { active_input_ = -1; continue; }
+            if (cp == U'\r' || cp == U'\n' || cp == U'\t') continue;
             if (CountCodepoints(target) < maxCodepoints) {
                 AppendUTF8(target, cp);
                 names_dirty_ = true;
             }
         }
-        // Clear the queue after consuming
         g_charQueue.clear();
+
+        // Enter/Tab -> next field or finish
+        bool enterNow = (kEnter == GLFW_PRESS || kEnter2 == GLFW_PRESS);
+        if ((enterNow && prevEnter == GLFW_RELEASE) || tabEdge) {
+            if (active_input_ == 0) {         // go to P2
+                active_input_ = 1;
+                uiFocus = 3;
+            }
+            else {                           // leave after P2
+                active_input_ = -1;
+                uiFocus = 4;                   // move to Close
+            }
+        }
+
+        // Esc exits the current field (doesn't close modal)
+        if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
+            active_input_ = -1;
+        }
     }
 
-    // --- ALWAYS VISIBLE/ACTIVE below (even if no field is focused) ---
+    // -------------------------------
+    // Hint + Close
+    // -------------------------------
     if (has_started && !rename_gate_open_) {
         AddText(0.5f, hintV, "Names are editable after Reset game.", Ui(0.75f), Alignment::CENTER, false);
     }
 
-    // Close button
-    if (button(0.5f, closeV, "Close [Esc]", Ui(0.85f), Alignment::CENTER, false, nullptr, nullptr)) {
-        ui_settings_open_ = false;
-        active_input_ = -1;
-        rename_gate_open_ = false; // one-time gate
-    }
-
-    // Esc to close
-    static int prevEsc = GLFW_RELEASE;
-    const int kEsc = glfwGetKey(glfwGetCurrentContext(), GLFW_KEY_ESCAPE);
-    if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
+    if (button(0.5f, closeV, "Close [Esc]", Ui(0.85f), Alignment::CENTER, (uiFocus == 4), nullptr, nullptr)) {
         ui_settings_open_ = false;
         active_input_ = -1;
         rename_gate_open_ = false;
     }
-    prevEsc = kEsc;
+
+    // -------------------------------
+    // Global Esc:
+    // - if editing a field → exit field
+    // - else → close modal
+    // -------------------------------
+    if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
+        if (active_input_ != -1) {
+            active_input_ = -1;
+        }
+        else {
+            ui_settings_open_ = false;
+            rename_gate_open_ = false;
+        }
+    }
+
+    // -------------------------------
+    // Arrow navigation between rows (only when NOT editing)
+    // -------------------------------
+    if (active_input_ == -1) {
+        if (upEdge)   uiFocus = wrap(uiFocus - 1, 0, 4);
+        if (downEdge) uiFocus = wrap(uiFocus + 1, 0, 4);
+
+        // Enter on "Close" closes
+        if (uiFocus == 4 && enterEdge) {
+            ui_settings_open_ = false;
+            rename_gate_open_ = false;
+        }
+    }
+
+    // keep previous key states
+    prevUp = kUp; prevDown = kDown; prevLeft = kLeft; prevRight = kRight;
+    prevEnter = (kEnter == GLFW_PRESS || kEnter2 == GLFW_PRESS) ? GLFW_PRESS : GLFW_RELEASE;
+    prevTab = kTab; prevEsc = kEsc;
 }
 
 
@@ -618,14 +713,62 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     static int prevEnter = GLFW_RELEASE;
     const  int curEnter = glfwGetKey(w, GLFW_KEY_ENTER);
 
+    // NEW: edge-detect left/right for keyboard nav
+    static int prevLeft = GLFW_RELEASE;
+    static int prevRight = GLFW_RELEASE;
+    const  int curLeft = glfwGetKey(w, GLFW_KEY_LEFT);
+    const  int curRight = glfwGetKey(w, GLFW_KEY_RIGHT);
+    const  bool leftEdge = (curLeft == GLFW_PRESS && prevLeft == GLFW_RELEASE);
+    const  bool rightEdge = (curRight == GLFW_PRESS && prevRight == GLFW_RELEASE);
+
     mouse_edge_down_ = (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
 
     const bool modalOpen = settings_open_ || help_open_ || ui_settings_open_;
 
-    if (!modalOpen) ControlState();
+    if (!modalOpen) ControlState(); // keeps up/down behavior
 
     // Title
     AddText(0.5f, 0.90f, "8 Ball Pool", Ui(2.0f), Alignment::CENTER);
+
+    // -------- LEFT/RIGHT PAGE LOGIC --------
+    // Main page indices:   0=Play (center), 1=Quick Setup (left), 2=How to Play (left), 3=Settings ⚙ (right)
+    // Pause page indices:  0..4 center column (Resume/Reset/QuickSetup/HowTo/Exit), 5=Settings ⚙ (right)
+    if (!modalOpen) {
+        if (!has_started) {
+            // clamp & init
+            if (selected_ < 0) selected_ = 0;
+            if (selected_ > 3) selected_ = 3;
+
+            if (rightEdge) {
+                if (selected_ == 0)        selected_ = 3;      // center -> settings
+                else if (selected_ == 1 ||
+                    selected_ == 2)    selected_ = 3;      // left block -> settings
+                // if already 3, stay
+            }
+            if (leftEdge) {
+                if (selected_ == 3)        selected_ = 1;      // settings -> left block (top)
+                else if (selected_ == 0)   selected_ = 1;      // center -> left block
+                // if 1 or 2, stay in left block
+            }
+        }
+        else {
+            // pause page
+            if (selected_ < 0) selected_ = 0;
+            if (selected_ > 5) selected_ = 5;
+
+            // remember last focused center item to return to from ⚙
+            static int lastCenterIdx = 0;
+            if (selected_ >= 0 && selected_ <= 4) lastCenterIdx = selected_;
+
+            if (rightEdge) {
+                if (selected_ <= 4) selected_ = 5;             // any center -> settings
+            }
+            if (leftEdge) {
+                if (selected_ == 5) selected_ = lastCenterIdx; // settings -> last center
+            }
+        }
+    }
+    // ---------------------------------------
 
     // Main vs Pause
     if (!has_started) DrawMainMenu(modalOpen, winW, winH, mouseX, mouseY, curEnter, prevEnter, selected_);
@@ -636,18 +779,28 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     if (help_open_)        DrawHelpModal(has_started);
     if (ui_settings_open_) DrawUiSettingsModal(has_started);
 
+    // ⚙ Settings icon (keyboard-activatable)
+    const int gearIndex = has_started ? 5 : 3; // index we gave to the gear on each page
     if (!ui_settings_open_) {
-        DrawSettingsIcon(winW, winH);
+        const bool isSelected = (selected_ == gearIndex);
+        const bool enterOnGear = isSelected && (curEnter == GLFW_PRESS && prevEnter == GLFW_RELEASE);
+        const bool clicked = DrawSettingsIcon(winW, winH, isSelected);
+        if (clicked || enterOnGear) {
+            ui_settings_open_ = true;
+            active_input_ = -1;
+        }
     }
 
     prevMouse = curMouse;
     prevEnter = curEnter;
+    prevLeft = curLeft;
+    prevRight = curRight;
 
     // If no text field is focused, drop any typed characters this frame
     if (active_input_ == -1 && !g_charQueue.empty())
         g_charQueue.clear();
-
 }
+
 
 void Menu::ControlState()
 {
