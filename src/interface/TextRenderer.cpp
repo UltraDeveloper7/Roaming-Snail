@@ -126,31 +126,40 @@ void TextRenderer::Render(std::vector<Text>& texts) {
 	glBindVertexArray(vao_);
 
 	for (auto& [position_x, position_y, text, scale, alignment, selected] : texts) {
-		glm::vec3 color = selected ? glm::vec3(1.0f, 0.0f, 0.0f) : glm::vec3(1.0f);
-		text_shader_->SetVec3(color, "textColor");
+		// Subtle accent for selected items instead of hard red
+		const glm::vec3 base = glm::vec3(1.0f);
+		const glm::vec3 accent = glm::vec3(0.98f, 0.86f, 0.35f); // warm highlight
+		glm::vec3 color = selected ? glm::mix(base, accent, 0.65f) : base;
 
+		// Positioning and per-item scale
 		const glm::vec2 saved_scale = font_scale_;
 		font_scale_ *= scale;
 
 		float width_px = CalculateTextWidth(text);
-		if (alignment == Alignment::CENTER)      position_x -= width_px * 0.5f;
-		else if (alignment == Alignment::RIGHT)  position_x -= width_px;
+		float posX = position_x;
+		if (alignment == Alignment::CENTER)      posX -= width_px * 0.5f;
+		else if (alignment == Alignment::RIGHT)  posX -= width_px;
 
+		float posY = position_y;
+
+		// Shadow pass (small offset, lower opacity)
 		if (draw_shadow_) {
-			glm::vec3 shadow = shadow_color_;
-			text_shader_->SetVec3(shadow, "textColor");
+			text_shader_->SetVec3(shadow_color_, "textColor");      // keep pure black
+			text_shader_->SetFloat(shadow_alpha_, "alphaMul");       // NEW: modulate alpha in shader
 			const glm::vec2 lift = selected ? glm::vec2(3.0f, -3.0f) : shadow_px_;
-			float sx = position_x + lift.x, sy = position_y + lift.y;
+			float sx = posX + lift.x, sy = posY + lift.y;
 			for (size_t i = 0; i < text.size();) {
 				uint32_t cp = NextCodepoint(text, i);
 				RenderGlyph(sx, sy, cp);
 			}
-			text_shader_->SetVec3(color, "textColor");
 		}
 
+		// Main text pass (full opacity)
+		text_shader_->SetVec3(color, "textColor");
+		text_shader_->SetFloat(1.0f, "alphaMul");                    // NEW: reset alpha
 		for (size_t i = 0; i < text.size();) {
 			uint32_t cp = NextCodepoint(text, i);
-			RenderGlyph(position_x, position_y, cp);
+			RenderGlyph(posX, posY, cp);
 		}
 
 		font_scale_ = saved_scale;

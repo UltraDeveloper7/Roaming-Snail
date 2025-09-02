@@ -19,6 +19,9 @@ namespace {
 	std::shared_ptr<Shader> blurShader, screenShader;
 	static std::shared_ptr<Shader> lineShader;
 
+	// Smooth 0→1 when menu opens, 1→0 when it closes
+	static float g_menuFx = 0.0f;
+
 	static GLuint makeColorTex(int w, int h) {
 		GLuint t; glGenTextures(1, &t);
 		glBindTexture(GL_TEXTURE_2D, t);
@@ -122,12 +125,25 @@ namespace {
 		return cur;
 	}
 
-	static void present(GLuint tex, const glm::vec4& tint, float vignette) {
+	static void present(GLuint tex, const glm::vec4& tint, float vignette,
+		float aberration, float sharpen, float grain, float scanlines,
+		float saturation, float contrast, float gamma, float timeSec)
+	{
 		if (!screenShader) return;
 		screenShader->Bind();
 		screenShader->SetInt(0, "src");
 		screenShader->SetVec4(tint, "tint");
 		screenShader->SetFloat(vignette, "vignette");
+
+		// New optional effects (all neutral by default)
+		screenShader->SetFloat(aberration, "aberration");
+		screenShader->SetFloat(sharpen, "sharpen");
+		screenShader->SetFloat(grain, "grain");
+		screenShader->SetFloat(scanlines, "scanlines");
+		screenShader->SetFloat(saturation, "saturation");
+		screenShader->SetFloat(contrast, "contrast");
+		screenShader->SetFloat(gamma, "gamma");
+		screenShader->SetFloat(timeSec, "time");
 
 		glDisable(GL_DEPTH_TEST);
 		glActiveTexture(GL_TEXTURE0);
@@ -305,6 +321,13 @@ void App::OnUpdate()
 	delta_time_ = current_frame - last_frame_;
 	last_frame_ = current_frame;
 
+	// Smooth step for menu animation (open/close)
+	{
+		const float target = in_menu_ ? 1.0f : 0.0f;
+		const float speed = 6.0f; // larger = snappier
+		g_menuFx += (target - g_menuFx) * (1.0f - std::exp(-speed * static_cast<float>(delta_time_)));
+	}
+
 	HandleState();
 
 	// ---------- render scene into offscreen FBO ----------
@@ -367,17 +390,45 @@ void App::OnUpdate()
 	const bool paused = in_menu_ && has_started_;
 	const bool firstPage = in_menu_ && !has_started_;
 
+	const float tSec = static_cast<float>(glfwGetTime());
+
 	GLuint shown = sceneColor;
 	if (paused) {
-		shown = blurChain(sceneColor, 6);                             // stronger blur
-		present(shown, glm::vec4(0.0f, 0.0f, 0.0f, 0.18f), 0.15f);    // neutral dark tint
+		shown = blurChain(sceneColor, 6); // stronger blur
+		// Animated grading
+		const float v = 0.15f * g_menuFx;
+		const float ta = 0.18f * g_menuFx;                   // tint intensity
+		const float sat = 1.0f - 0.15f * g_menuFx;            // slight desat
+		const float con = 1.0f + 0.04f * g_menuFx;            // tiny contrast bump
+		const float grn = 0.02f * g_menuFx;                   // very subtle grain
+
+		present(shown,
+			glm::vec4(0.0f, 0.0f, 0.0f, ta), v,
+			/*aberration*/0.0f, /*sharpen*/0.0f, /*grain*/grn, /*scanlines*/0.0f,
+			/*saturation*/sat, /*contrast*/con, /*gamma*/1.0f,
+			tSec);
 	}
 	else if (firstPage) {
-		shown = blurChain(sceneColor, 4);                             // mild blur
-		present(shown, glm::vec4(0.055f, 0.415f, 0.239f, 0.18f), 0.12f); // felt green tint
+		shown = blurChain(sceneColor, 4); // mild blur
+		const float v = 0.12f * g_menuFx;
+		const float ta = 0.18f * g_menuFx;
+		const float sat = 1.0f - 0.10f * g_menuFx;
+		const float con = 1.0f + 0.03f * g_menuFx;
+		const float grn = 0.015f * g_menuFx;
+
+		present(shown,
+			glm::vec4(0.055f, 0.415f, 0.239f, ta), v, // felt-green tint
+			0.0f, 0.0f, grn, 0.0f,
+			sat, con, 1.0f,
+			tSec);
 	}
 	else {
-		present(sceneColor, glm::vec4(0, 0, 0, 0), 0.0f);                // no effect
+		// Gameplay: fully neutral
+		present(sceneColor,
+			glm::vec4(0, 0, 0, 0), 0.0f,
+			0.0f, 0.0f, 0.0f, 0.0f,
+			1.0f, 1.0f, 1.0f,
+			tSec);
 	}
 
 	// ---- aiming guideline overlay (optional) ----

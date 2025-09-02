@@ -28,6 +28,11 @@ namespace {
     };
     constexpr int kHelpCount = static_cast<int>(sizeof(kHelpLines) / sizeof(kHelpLines[0]));
 
+    // Hover tracking + cursors
+    static bool g_anyHoverThisFrame = false;
+    static GLFWcursor* g_cursorHand = nullptr;
+    static GLFWcursor* g_cursorArrow = nullptr;
+
     // Generic renderer for the help text; draws at any anchor/scale/alignment
     static void RenderHelpBlock(
         Menu& menu, float uAnchor, float vTop,
@@ -148,11 +153,15 @@ bool Menu::button(float u, float v, const std::string& label, float scale,
     float y0 = py - h * 0.5f;
     float y1 = py + h * 0.5f;
 
-    // hover?
-    bool hover = (mouse_x_ >= x0 && mouse_x_ <= x1 && mouse_y_ >= y0 && mouse_y_ <= y1);
+    // Hover test (stable; not affected by the visual scale)
+    const bool hover = (mouse_x_ >= x0 && mouse_x_ <= x1 && mouse_y_ >= y0 && mouse_y_ <= y1);
+    if (hover) g_anyHoverThisFrame = true;
+
+    // Slight enlargement when hovered OR emphasized (selected)
+    const float drawScale = (emphasize || hover) ? scale * 1.06f : scale;
 
     // draw
-    AddText(u, v, label, scale, align, emphasize || hover);
+    AddText(u, v, label, drawScale, align, emphasize || hover);
 
     // CLICK: frame-wide edge (set in Draw), requires hover
     bool clicked = hover && mouse_edge_down_;
@@ -772,6 +781,9 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
 
     mouse_edge_down_ = (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
 
+    // Reset per-frame hover flag
+    g_anyHoverThisFrame = false;
+
     const bool modalOpen = settings_open_ || help_open_ || ui_settings_open_;
 
     if (!modalOpen) ControlState(); // keeps up/down behavior
@@ -848,6 +860,13 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     // If no text field is focused, drop any typed characters this frame
     if (active_input_ == -1 && !g_charQueue.empty())
         g_charQueue.clear();
+
+    // Set cursor shape based on hover
+    if (GLFWwindow* cw = glfwGetCurrentContext()) {
+        if (!g_cursorHand)  g_cursorHand = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+        if (!g_cursorArrow) g_cursorArrow = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+        glfwSetCursor(cw, g_anyHoverThisFrame ? g_cursorHand : g_cursorArrow);
+    }
 }
 
 
