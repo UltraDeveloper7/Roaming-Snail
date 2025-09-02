@@ -22,7 +22,7 @@ namespace {
         "Rotate camera: mouse",
         "Adjust power: UP/DOWN",
         "Rotate cue: LEFT/RIGHT",
-		"Raise/lower cue: R/F",
+        "Raise/lower cue: R/F",
         "Strike: SPACE",
         "Toggle lights: keys 0-9",
     };
@@ -292,131 +292,178 @@ void Menu::DrawPauseMenu(bool modalOpen, int winW, int winH,
 }
 
 
-
-void Menu::DrawQuickSetupModal(int winW, int winH, float mouseX, float mouseY, bool has_started)
+void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mouseY*/, bool has_started)
 {
-    static int focus = 0; // 0 = strike force, 1 = friction
+    // Scales
+    const float titleScale = Ui(0.95f);
+    const float rowScale = Ui(0.80f);
+    const float closeScale = Ui(0.80f);
 
-    const float panelU = 0.42f;
-    const float headV = 0.60f;
-    const float row1V = 0.54f;
-    const float row2V = 0.49f;
-    const float closeV = 0.43f;
+    // Metrics (pixels)
+    const float titleH = estimateHeightPx(titleScale);
+    const float rowH = estimateHeightPx(rowScale);
+    const float closeH = estimateHeightPx(closeScale);
+    const float btnW = estimateWidthPx("<", rowScale); // "<" and ">" same width
 
-    AddText(panelU, headV, "Quick Setup  v", Ui(0.9f), Alignment::LEFT, true);
-
-    const float lineScale = Ui(0.8f);
-
-    // Strike force (arrows only)
+    // Labels
     std::string sf = std::format("Strike force: {:.2f}", Config::power_coeff);
-    float sfWidthPx = estimateWidthPx(sf, lineScale);
-    const float sfX0 = panelU * winW;
-    const float rowH = estimateHeightPx(lineScale);
-    const float row1Y0 = row1V * winH - rowH * 0.5f;
-    const float row1Y1 = row1V * winH + rowH * 0.5f;
-
-    const bool row1Hover = (mouseX >= sfX0 && mouseX <= sfX0 + sfWidthPx && mouseY >= row1Y0 && mouseY <= row1Y1);
-    if (row1Hover) focus = 0;
-    AddText(panelU, row1V, sf, lineScale, Alignment::LEFT, (focus == 0) || row1Hover);
-
-    float leftU = (sfX0 + sfWidthPx + 18.0f) / winW;
-    float rightU = (sfX0 + sfWidthPx + 48.0f) / winW;
-    if (button(leftU, row1V, "<", lineScale, Alignment::CENTER, false, nullptr, nullptr))
-        Config::power_coeff -= 0.05f;
-    if (button(rightU, row1V, ">", lineScale, Alignment::CENTER, false, nullptr, nullptr))
-        Config::power_coeff += 0.05f;
-
-    // Ball friction (arrows only), fine step ±0.0005, range [0.9400..0.9995]
     std::string bf = std::format("Ball friction: {:.4f}", Config::linear_damping);
-    float bfWidthPx = estimateWidthPx(bf, lineScale);
-    const float bfX0 = panelU * winW;
-    const float row2Y0 = row2V * winH - rowH * 0.5f;
-    const float row2Y1 = row2V * winH + rowH * 0.5f;
 
-    const bool row2Hover = (mouseX >= bfX0 && mouseX <= bfX0 + bfWidthPx && mouseY >= row2Y0 && mouseY <= row2Y1);
-    if (row2Hover) focus = 1;
-    AddText(panelU, row2V, bf, lineScale, Alignment::LEFT, (focus == 1) || row2Hover);
+    // Label widths
+    const float sfW = estimateWidthPx(sf, rowScale);
+    const float bfW = estimateWidthPx(bf, rowScale);
 
-    leftU = (bfX0 + bfWidthPx + 18.0f) / winW;
-    rightU = (bfX0 + bfWidthPx + 48.0f) / winW;
+    // Spacing
+    const float hGap = rowH * 0.55f; // label↔button
+    const float gapTitleToRows = rowH * 0.95f;
+    const float rowStep = rowH * 1.20f; // center-to-center rows
+    const float gapRowsToClose = rowH * 0.95f;
 
-    if (button(leftU, row2V, "<", lineScale, Alignment::CENTER, false, nullptr, nullptr)) {
+    // Row group widths
+    const float row1W = sfW + hGap + btnW + hGap + btnW;
+    const float row2W = bfW + hGap + btnW + hGap + btnW;
+
+    // Total height (2 rows)
+    const float listH = rowH + rowStep;
+    const float totalH = titleH + gapTitleToRows + listH + gapRowsToClose + closeH;
+
+    // Center vertically
+    const float yBottom = 0.5f * (height_ - totalH);
+    const float yTop = yBottom + totalH;
+
+    // ---------- Title (TOP, centered) ----------
+    const float titleCy = yTop - 0.5f * titleH;
+    AddText(0.5f, titleCy / height_, "Quick Setup  v", titleScale, Alignment::CENTER, true);
+
+    // Row centers (go DOWN from title)
+    const float row1Cy = yTop - titleH - gapTitleToRows - 0.5f * rowH;
+    const float row2Cy = row1Cy - rowStep;
+
+    // Row 1 (centered horizontally as a group)
+    const float row1Left = 0.5f * width_ - 0.5f * row1W;
+    const float sfCx = row1Left + sfW * 0.5f;
+    const float sfLeftCx = row1Left + sfW + hGap + btnW * 0.5f;
+    const float sfRightCx = sfLeftCx + btnW + hGap;
+
+    // Row 2 (centered horizontally as a group)
+    const float row2Left = 0.5f * width_ - 0.5f * row2W;
+    const float bfCx = row2Left + bfW * 0.5f;
+    const float bfLeftCx = row2Left + bfW + hGap + btnW * 0.5f;
+    const float bfRightCx = bfLeftCx + btnW + hGap;
+
+    // Keyboard focus (0 = strike force, 1 = friction)
+    static int focus = 0;
+    GLFWwindow* w = glfwGetCurrentContext();
+    static int prevUp = GLFW_RELEASE, prevDown = GLFW_RELEASE, prevLeft = GLFW_RELEASE, prevRight = GLFW_RELEASE, prevEsc = GLFW_RELEASE;
+    const int kUp = glfwGetKey(w, GLFW_KEY_UP);
+    const int kDown = glfwGetKey(w, GLFW_KEY_DOWN);
+    const int kLeft = glfwGetKey(w, GLFW_KEY_LEFT);
+    const int kRight = glfwGetKey(w, GLFW_KEY_RIGHT);
+    const int kEsc = glfwGetKey(w, GLFW_KEY_ESCAPE);
+
+    const bool upEdge = (kUp == GLFW_PRESS && prevUp == GLFW_RELEASE);
+    const bool downEdge = (kDown == GLFW_PRESS && prevDown == GLFW_RELEASE);
+    const bool leftEdge = (kLeft == GLFW_PRESS && prevLeft == GLFW_RELEASE);
+    const bool rightEdge = (kRight == GLFW_PRESS && prevRight == GLFW_RELEASE);
+
+    if (upEdge)   focus = 0;
+    if (downEdge) focus = 1;
+
+    // --- Row 1: Strike force ---
+    AddText(sfCx / width_, row1Cy / height_, sf, rowScale, Alignment::CENTER, (focus == 0));
+    if (button(sfLeftCx / width_, row1Cy / height_, "<", rowScale, Alignment::CENTER, false, nullptr, nullptr))
+        Config::power_coeff -= 0.05f;
+    if (button(sfRightCx / width_, row1Cy / height_, ">", rowScale, Alignment::CENTER, false, nullptr, nullptr))
+        Config::power_coeff += 0.05f;
+    if (focus == 0) {
+        if (leftEdge)  Config::power_coeff -= 0.05f;
+        if (rightEdge) Config::power_coeff += 0.05f;
+    }
+
+    // --- Row 2: Ball friction ---
+    AddText(bfCx / width_, row2Cy / height_, bf, rowScale, Alignment::CENTER, (focus == 1));
+    if (button(bfLeftCx / width_, row2Cy / height_, "<", rowScale, Alignment::CENTER, false, nullptr, nullptr)) {
         Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
         Config::velocity_multiplier = Config::linear_damping;
     }
-    if (button(rightU, row2V, ">", lineScale, Alignment::CENTER, false, nullptr, nullptr)) {
+    if (button(bfRightCx / width_, row2Cy / height_, ">", rowScale, Alignment::CENTER, false, nullptr, nullptr)) {
         Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
         Config::velocity_multiplier = Config::linear_damping;
     }
-
-    // Close
-    if (button(panelU, closeV, "Close [Esc]", Ui(0.8f), Alignment::LEFT, false, nullptr, nullptr)) {
-        settings_open_ = false;
-        selected_ = has_started ? 2 : 1;
-    }
-
-    // keyboard in modal
-    static int prevUp = GLFW_RELEASE, prevDown = GLFW_RELEASE, prevLeft = GLFW_RELEASE, prevRight = GLFW_RELEASE, prevEsc = GLFW_RELEASE;
-    GLFWwindow* w = glfwGetCurrentContext();
-    int kUp = glfwGetKey(w, GLFW_KEY_UP);
-    int kDown = glfwGetKey(w, GLFW_KEY_DOWN);
-    int kLeft = glfwGetKey(w, GLFW_KEY_LEFT);
-    int kRight = glfwGetKey(w, GLFW_KEY_RIGHT);
-    int kEsc = glfwGetKey(w, GLFW_KEY_ESCAPE);
-
-    if (kUp == GLFW_PRESS && prevUp == GLFW_RELEASE)   focus = 0;
-    if (kDown == GLFW_PRESS && prevDown == GLFW_RELEASE) focus = 1;
-
-    if (kLeft == GLFW_PRESS && prevLeft == GLFW_RELEASE) {
-        if (focus == 0) Config::power_coeff -= 0.05f;
-        else {
+    if (focus == 1) {
+        if (leftEdge) {
             Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
             Config::velocity_multiplier = Config::linear_damping;
         }
-    }
-    if (kRight == GLFW_PRESS && prevRight == GLFW_RELEASE) {
-        if (focus == 0) Config::power_coeff += 0.05f;
-        else {
+        if (rightEdge) {
             Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
             Config::velocity_multiplier = Config::linear_damping;
         }
     }
+
+    // Close (BOTTOM)
+    const float closeCy = yBottom + 0.5f * closeH;
+    if (button(0.5f, closeCy / height_, "Close [Esc]", closeScale, Alignment::CENTER, false, nullptr, nullptr)) {
+        settings_open_ = false;
+        selected_ = has_started ? 2 : 1;
+    }
+
     if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
         settings_open_ = false;
         selected_ = has_started ? 2 : 1;
     }
 
+    // Prev key states
     prevUp = kUp; prevDown = kDown; prevLeft = kLeft; prevRight = kRight; prevEsc = kEsc;
 }
 
 
 void Menu::DrawHelpModal(bool has_started)
 {
+    // Scales
     const float titleScale = Ui(1.1f);
     const float lineScale = Ui(0.75f);
     const float closeScale = Ui(0.8f);
 
-    auto vpx = [&](float px) { return px / static_cast<float>(height_); };
-    const float lineH_px = estimateHeightPx(lineScale);
-    const float gap_px = lineH_px * 1.10f;
+    // Metrics (pixels)
+    const float titleH = estimateHeightPx(titleScale);
+    const float lineH = estimateHeightPx(lineScale);
+    const float closeH = estimateHeightPx(closeScale);
 
-    const float headV = 0.62f;
-    const float topV = 0.56f;
+    // Spacing (pixels)
+    const float gapTitleToList = lineH * 0.95f;
+    const float listStep = lineH * 1.10f;  // center-to-center between lines
+    const float gapListToClose = lineH * 0.95f;
 
-    AddText(0.5f, headV, std::string(ICON_INFO) + "  How to Play",
+    // Total modal height
+    const float listH = lineH + (kHelpCount - 1) * listStep;
+    const float totalH = titleH + gapTitleToList + listH + gapListToClose + closeH;
+
+    // Center vertically
+    const float yBottom = 0.5f * (height_ - totalH);
+    const float yTop = yBottom + totalH;
+
+    // Title (TOP)
+    const float titleCy = yTop - 0.5f * titleH;
+    AddText(0.5f, titleCy / height_, std::string(ICON_INFO) + "  How to Play",
         titleScale, Alignment::CENTER, true);
 
-    // list, using pixel-derived gap
-    RenderHelpBlock(*this, /*u*/0.5f, /*vTop*/topV, Alignment::CENTER,
-        lineScale, /*lineGap*/vpx(gap_px));
+    // Help lines (go DOWN from title)
+    float y = yTop - titleH - gapTitleToList - 0.5f * lineH;
+    for (int i = 0; i < kHelpCount; ++i) {
+        AddText(0.5f, y / height_, kHelpLines[i], lineScale, Alignment::CENTER, false);
+        y -= listStep;
+    }
 
-    // place Close right under the block
-    const float closeV = topV - vpx(gap_px) * kHelpCount - vpx(lineH_px * 0.90f);
-    if (button(0.5f, closeV, "Close [Esc]", closeScale, Alignment::CENTER, false, nullptr, nullptr)) {
+    // Close (BOTTOM)
+    const float closeCy = yBottom + 0.5f * closeH;
+    if (button(0.5f, closeCy / height_, "Close [Esc]", closeScale,
+        Alignment::CENTER, false, nullptr, nullptr)) {
         help_open_ = false;
         selected_ = has_started ? 3 : 2;
     }
 
+    // Esc closes
     static int prevEscHelp = GLFW_RELEASE;
     int kEsc = glfwGetKey(glfwGetCurrentContext(), GLFW_KEY_ESCAPE);
     if (kEsc == GLFW_PRESS && prevEscHelp == GLFW_RELEASE) {
@@ -425,6 +472,7 @@ void Menu::DrawHelpModal(bool has_started)
     }
     prevEscHelp = kEsc;
 }
+
 
 
 bool Menu::DrawSettingsIcon(int /*winW*/, int /*winH*/, bool selected)
