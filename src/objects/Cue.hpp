@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../precompiled.h"
 #include "Ball.hpp"
 #include "CueBallMap.hpp"
@@ -10,6 +10,9 @@ public:
 	void HandleShot(const std::shared_ptr<Ball>& white_ball, float dt);
 	void PlaceAtBall(const std::shared_ptr<Ball>& ball);
 
+	//override to apply visual tilt
+	void Draw(const std::shared_ptr<Shader>& shader) override;
+
 	// Add the GetCueBallMap method
 	std::shared_ptr<CueBallMap> GetCueBallMap() const { return cue_ball_map_; }
 
@@ -19,7 +22,15 @@ public:
 		return -glm::normalize(glm::cross(cueDir, up)); // matches HandleShot()
 	}
 
+	// --- elevation state ---
+	float elevation_angle_ = 0.0f;      // radians, 0..~0.44 (25°)
+
 private:
 	bool power_changed_{false};
 	std::shared_ptr<CueBallMap> cue_ball_map_;
+
+	// --- press-to-step support ---
+	float target_elevation_angle_ = 0.0f; // radians
+	bool r_was_down_ = false;
+	bool f_was_down_ = false;
 };

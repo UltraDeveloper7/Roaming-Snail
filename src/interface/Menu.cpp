@@ -22,6 +22,7 @@ namespace {
         "Rotate camera: mouse",
         "Adjust power: UP/DOWN",
         "Rotate cue: LEFT/RIGHT",
+		"Raise/lower cue: R/F",
         "Strike: SPACE",
         "Toggle lights: keys 0-9",
     };
