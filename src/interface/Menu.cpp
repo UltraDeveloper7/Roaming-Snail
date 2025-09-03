@@ -103,18 +103,22 @@ namespace {
     static float g_uiAnim = 0.0f;
 
     // --- Animation helpers ---
-    static inline float EaseInOutCubic(float t) {
+    static inline float EaseOutCubic(float t) {
         t = std::clamp(t, 0.0f, 1.0f);
-        return (t < 0.5f) ? 4.0f * t * t * t : 1.0f - std::pow(-2.0f * t + 2.0f, 3.0f) * 0.5f;
+        return 1.0f - std::pow(1.0f - t, 3.0f);
+    }
+    static inline float EaseInCubic(float t) {
+        t = std::clamp(t, 0.0f, 1.0f);
+        return t * t * t;
     }
 
     // Critically-damped style "towards" using exact exponential step.
     // tau controls how "snappy" it is; smaller = faster.
     static inline float Towards(float cur, float target, float dt, float tauOpen, float tauClose) {
-        const float tau = (target > cur) ? tauOpen : tauClose;              // close a bit faster
-        const float k = 1.0f - std::exp(-static_cast<float>(dt) / tau);   // frame-rate independent
+        const float tau = (target > cur) ? tauOpen : tauClose;      // close a bit faster
+        const float k = 1.0f - std::exp(-static_cast<float>(dt) / tau);
         float out = cur + (target - cur) * k;
-        if (std::fabs(out - target) < 0.001f) out = target;                 // snap tiny tail
+        if (std::fabs(out - target) < 0.006f) out = target;  // bigger snap zone = no end lag
         return out;
     }
 
@@ -363,14 +367,26 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mou
 
 	// Animation easing (0 = closed, 1 = fully open)
     const float a = std::clamp(g_qsAnim, 0.0f, 1.0f);
-    const float ease = EaseInOutCubic(a);
-    auto V = [&](float v) { return (1.0f - ease) * 0.5f + ease * v; };
-    auto S = [&](float s) { return s * (0.92f + 0.08f * ease); };
-    const bool interactive = (settings_open_ && ease > 0.08f);
+    const bool opening = settings_open_;
+
+    // Progress (0→1) used for scale: out-cubic on open, decelerating on close
+    const float prog = opening ? EaseOutCubic(a) : (1.0f - EaseInCubic(1.0f - a));
+
+    // Displacement (slide amount in NDC): (open) 1−EaseOutCubic(a), (close) EaseInCubic(1−a)
+    auto Vslide = [&](float v, float dir, float offsetPx) {
+        const float ndc = offsetPx / static_cast<float>(height_);
+        const float disp = opening ? (1.0f - EaseOutCubic(a)) : EaseInCubic(1.0f - a);
+        return v + dir * ndc * disp;
+        };
+
+    // Scale shrinks gently toward close
+    auto S = [&](float s) { return s * (0.88f + 0.12f * prog); };
+
+    const bool interactive = (settings_open_ && prog > 0.08f);
 
     // ---------- Title (TOP, centered) ----------
     const float titleCy = yTop - 0.5f * titleH;
-    AddText(0.5f, V(titleCy / height_), "Quick Setup  v", S(titleScale), Alignment::CENTER, true);
+    AddText(0.5f, Vslide(titleCy / height_, -1.0f, 80.0f), "Quick Setup  v", S(titleScale), Alignment::CENTER, true);
 
     // Row centers (go DOWN from title)
     const float row1Cy = yTop - titleH - gapTitleToRows - 0.5f * rowH;
@@ -382,10 +398,11 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mou
     const float sfLeftCx = row1Left + sfW + hGap + btnW * 0.5f;
     const float sfRightCx = sfLeftCx + btnW + hGap;
 
-    AddText(sfCx / width_, V(row1Cy / height_), sf, S(rowScale), Alignment::CENTER, true);
-    if (interactive && button(sfLeftCx / width_, V(row1Cy / height_), "<", S(rowScale), Alignment::CENTER, false, nullptr, nullptr))
+    // Rows: slide gently up
+    AddText(sfCx / width_, Vslide(row1Cy / height_, -0.5f, 60.0f), sf, S(rowScale), Alignment::CENTER, true);
+    if (interactive && button(sfLeftCx / width_, Vslide(row1Cy / height_, -0.5f, 60.0f), "<", S(rowScale), Alignment::CENTER, false, nullptr, nullptr))
         Config::power_coeff -= 0.05f;
-    if (interactive && button(sfRightCx / width_, V(row1Cy / height_), ">", S(rowScale), Alignment::CENTER, false, nullptr, nullptr))
+    if (interactive && button(sfRightCx / width_, Vslide(row1Cy / height_, -0.5f, 60.0f), ">", S(rowScale), Alignment::CENTER, false, nullptr, nullptr))
         Config::power_coeff += 0.05f;
 
     // Row 2 (centered horizontally as a group)
@@ -394,12 +411,12 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mou
     const float bfLeftCx = row2Left + bfW + hGap + btnW * 0.5f;
     const float bfRightCx = bfLeftCx + btnW + hGap;
 
-    AddText(bfCx / width_, V(row2Cy / height_), bf, S(rowScale), Alignment::CENTER, true);
-    if (interactive && button(bfLeftCx / width_, V(row2Cy / height_), "<", S(rowScale), Alignment::CENTER, false, nullptr, nullptr)) {
+    AddText(bfCx / width_, Vslide(row2Cy / height_, -0.5f, 60.0f), bf, S(rowScale), Alignment::CENTER, true);
+    if (interactive && button(bfLeftCx / width_, Vslide(row2Cy / height_, -0.5f, 60.0f), "<", S(rowScale), Alignment::CENTER, false, nullptr, nullptr)) {
         Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
         Config::velocity_multiplier = Config::linear_damping;
     }
-    if (interactive && button(bfRightCx / width_, V(row2Cy / height_), ">", S(rowScale), Alignment::CENTER, false, nullptr, nullptr)) {
+    if (interactive && button(bfRightCx / width_, Vslide(row2Cy / height_, -0.5f, 60.0f), ">", S(rowScale), Alignment::CENTER, false, nullptr, nullptr)) {
         Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
         Config::velocity_multiplier = Config::linear_damping;
     }
@@ -440,7 +457,7 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mou
 
     // Close (BOTTOM)
     const float closeCy = yBottom + 0.5f * closeH;
-    if (interactive && button(0.5f, V(closeCy / height_), "Close [Esc]", S(closeScale), Alignment::CENTER, false, nullptr, nullptr)) {
+    if (interactive && button(0.5f, Vslide(closeCy / height_, +1.0f, 70.0f), "Close [Esc]", S(closeScale), Alignment::CENTER, false, nullptr, nullptr)) {
         settings_open_ = false;
         selected_ = has_started ? 2 : 1;
     }
@@ -476,23 +493,34 @@ void Menu::DrawHelpModal(bool has_started)
     const float yTop = yBottom + totalH;
 
     const float a = std::clamp(g_helpAnim, 0.0f, 1.0f);
-    const float ease = EaseInOutCubic(a);                // smoothstep
-    auto V = [&](float v) { return (1.0f - ease) * 0.5f + ease * v; };
-    auto S = [&](float s) { return s * (0.92f + 0.08f * ease); }; // subtle scale
-    const bool interactive = (help_open_ && ease > 0.08f);
+    const bool opening = help_open_;
+    const float prog = opening ? EaseOutCubic(a) : (1.0f - EaseInCubic(1.0f - a));
+
+    auto Vslide = [&](float v, float dir, float offsetPx) {
+        const float ndc = offsetPx / static_cast<float>(height_);
+        const float disp = opening ? (1.0f - EaseOutCubic(a)) : EaseInCubic(1.0f - a);
+        return v + dir * ndc * disp;
+        };
+
+    auto S = [&](float s) { return s * (0.88f + 0.12f * prog); };
+
+    const bool interactive = (help_open_ && prog > 0.08f);
+
 
     const float titleCy = yTop - 0.5f * titleH;
-    AddText(0.5f, V(titleCy / height_), std::string(ICON_INFO) + "  How to Play",
-        S(titleScale), Alignment::CENTER, true);
+    // Title up
+    AddText(0.5f, Vslide(titleCy / height_, -1.0f, 80.0f),
+        std::string(ICON_INFO) + "  How to Play", S(titleScale), Alignment::CENTER, true);
+
 
     float y = yTop - titleH - gapTitleToList - 0.5f * lineH;
     for (int i = 0; i < kHelpCount; ++i) {
-        AddText(0.5f, V(y / height_), kHelpLines[i], S(lineScale), Alignment::CENTER, false);
+        AddText(0.5f, Vslide(y / height_, -0.5f, 60.0f), kHelpLines[i], S(lineScale), Alignment::CENTER, false);
         y -= listStep;
     }
 
     const float closeCy = yBottom + 0.5f * closeH;
-    if (interactive && button(0.5f, V(closeCy / height_), "Close [Esc]",
+    if (interactive && button(0.5f, Vslide(closeCy / height_, +1.0f, 70.0f), "Close [Esc]",
         S(closeScale), Alignment::CENTER, false, nullptr, nullptr)) {
         help_open_ = false;
         selected_ = has_started ? 3 : 2;
@@ -546,13 +574,25 @@ void Menu::DrawUiSettingsModal(bool has_started)
 
     // --- animation
     const float a = std::clamp(g_uiAnim, 0.0f, 1.0f);
-    const float ease = EaseInOutCubic(a);
-    auto V = [&](float v) { return (1.0f - ease) * 0.5f + ease * v; };
-    auto S = [&](float s) { return s * (0.92f + 0.08f * ease); };
-    const bool interactive = (ui_settings_open_ && ease > 0.08f);
+    const bool opening = ui_settings_open_;
+    const float prog = opening ? EaseOutCubic(a) : (1.0f - EaseInCubic(1.0f - a));
 
-    AddText(0.5f, V(headV), std::string(ICON_SETTINGS) + "  Settings",
+    auto Vslide = [&](float v, float dir, float offsetPx) {
+        const float ndc = offsetPx / static_cast<float>(height_);
+        const float disp = opening ? (1.0f - EaseOutCubic(a)) : EaseInCubic(1.0f - a);
+        return v + dir * ndc * disp;
+        };
+
+    auto S = [&](float s) { return s * (0.88f + 0.12f * prog); };
+
+    const bool interactive = (ui_settings_open_ && prog > 0.08f);
+
+
+
+    // Heading up
+    AddText(0.5f, Vslide(headV, -1.0f, 80.0f), std::string(ICON_SETTINGS) + "  Settings",
         S(titleScale), Alignment::CENTER, true);
+
 
     // -------------------------------
     // Keyboard focus & key edges
@@ -609,7 +649,7 @@ void Menu::DrawUiSettingsModal(bool has_started)
     for (int i = 0; i < kOptCount; ++i) {
         const bool on = std::fabs(ui_scale_ - kOpts[i].val) < 0.001f;
         const float centerU = (x + widths[i] * 0.5f) / static_cast<float>(width_);
-        if (button(centerU, V(row1V), labels[i], S(cbScale), Alignment::CENTER, (on || uiFocus == 0), nullptr, nullptr)) {
+        if (button(centerU, Vslide(row1V, -0.5f, 60.0f), labels[i], S(cbScale), Alignment::CENTER, (on || uiFocus == 0), nullptr, nullptr)) {
             ui_scale_ = kOpts[i].val;
         }
         x += widths[i] + colGapPx;
@@ -631,7 +671,9 @@ void Menu::DrawUiSettingsModal(bool has_started)
     // Guideline toggle
     // -------------------------------
     const std::string gLabel = std::string(show_guideline_ ? "[x] " : "[ ] ") + "Guideline";
-    if (interactive && button(0.5f, V(guideV), gLabel, S(Ui(0.90f)), Alignment::CENTER, (uiFocus == 1), nullptr, nullptr)) {
+    // Guideline row
+    if (interactive && button(0.5f, Vslide(guideV, -0.5f, 60.0f), gLabel, S(Ui(0.90f)),
+        Alignment::CENTER, (uiFocus == 1), nullptr, nullptr)) {
         show_guideline_ = !show_guideline_;
     }
     if (interactive && active_input_ == -1 && uiFocus == 1 && (leftEdge || rightEdge || enterEdge)) {
@@ -641,40 +683,62 @@ void Menu::DrawUiSettingsModal(bool has_started)
     // -------------------------------
     // Player names (with caret & mouse focus)
     // -------------------------------
-    auto nameRow = [&](float v, const char* label, int fieldIndex, std::string& target)
+    auto nameRow = [&](float v, const char* label, int fieldIndex, std::string& target,
+        float slideDir, float slidePx) -> bool
         {
-			const float baseScale = Ui(0.95f);
-			const float drawScale = S(baseScale);
+            const float baseScale = Ui(0.95f);        // stable metrics for hit-testing
+            const float drawScale = S(baseScale);     // animated visual scale
+            const float drawV = Vslide(v, slideDir, slidePx); // animated vertical position
+
             std::string field = target;
             if (active_input_ == fieldIndex && canEditNames) {
                 const bool caretOn = std::fmod(glfwGetTime(), 1.0) < 0.5;
                 field += caretOn ? "|" : " ";
             }
+
             // Highlight either when editing or when row is focused (2 or 3)
             const bool rowFocused = (uiFocus == (fieldIndex == 0 ? 2 : 3));
-			const float drawV = V(v);
 
+            // Draw at the animated position/scale
             AddText(0.5f, drawV, std::string(label) + field, drawScale, Alignment::CENTER,
                 (active_input_ == fieldIndex) || rowFocused);
 
-            if (!canEditNames || !interactive) return;
+            if (!canEditNames || !interactive) return false;
 
-            const float labelW = estimateWidthPx(label, Ui(0.95f));
-            const float fieldW = std::max(240.0f * ui_scale_, estimateWidthPx("MMMMMMMMMMMMMMMM", Ui(0.95f)));
+            // --- Hit test (stable size; animated position) ---
+            const float labelW = estimateWidthPx(label, baseScale);
+            const float fieldW = std::max(240.0f * ui_scale_,
+                estimateWidthPx("MMMMMMMMMMMMMMMM", baseScale)); // min field width
+
             const float pxMid = 0.5f * width_;
             const float x0 = pxMid - (labelW + fieldW) * 0.5f + labelW;
             const float x1 = x0 + fieldW;
-            const float y = v * height_;
-            const float h = estimateHeightPx(Ui(0.95f));
-            const float y0 = y - h * 0.5f, y1 = y + h * 0.5f;
 
-            if (mouse_edge_down_ && mouse_x_ >= x0 && mouse_x_ <= x1 && mouse_y_ >= y0 && mouse_y_ <= y1) {
-                active_input_ = fieldIndex;
+            const float y = drawV * height_;                 // use animated vertical position
+            const float h = estimateHeightPx(baseScale);     // stable hitbox height
+            const float y0 = y - h * 0.5f, y1 = y + h * 0.5f;
+            const bool inside = (mouse_x_ >= x0 && mouse_x_ <= x1 && mouse_y_ >= y0 && mouse_y_ <= y1);
+
+            if (mouse_edge_down_ && inside) {
+                active_input_ = fieldIndex;   // focus this field
             }
+
+            return mouse_edge_down_ && inside; // report if this click was inside this field
         };
 
-    nameRow(row2V, "Player 1: ", 0, p1_name_);
-    nameRow(row3V, "Player 2: ", 1, p2_name_);
+
+    // Name rows (wrap the v passed to nameRow)
+    nameRow(row2V, "Player 1: ", 0, p1_name_, -0.5f, 60.0f);
+    nameRow(row3V, "Player 2: ", 1, p2_name_, -0.5f, 60.0f);
+
+    bool clickedP1 = nameRow(row2V, "Player 1: ", 0, p1_name_, -0.5f, 60.0f);
+    bool clickedP2 = nameRow(row3V, "Player 2: ", 1, p2_name_, -0.5f, 60.0f);
+
+    // If the user clicked and it wasn't in either field, cancel editing.
+    if (interactive && canEditNames && mouse_edge_down_ && !clickedP1 && !clickedP2) {
+        active_input_ = -1;
+    }
+
 
     // Start editing on Enter/Tab if focused on a name row and not already editing
     if (interactive && canEditNames && active_input_ == -1) {
@@ -746,10 +810,13 @@ void Menu::DrawUiSettingsModal(bool has_started)
     // Hint + Close
     // -------------------------------
     if (has_started && !rename_gate_open_) {
-        AddText(0.5f, V(hintV), "Names are editable after Reset game.", S(Ui(0.75f)), Alignment::CENTER, false);
+        AddText(0.5f, Vslide(hintV, -0.5f, 55.0f), "Names are editable after Reset game.", S(Ui(0.75f)),
+            Alignment::CENTER, false);
     }
 
-    if (interactive && button(0.5f, V(closeV), "Close [Esc]", S(Ui(0.85f)), Alignment::CENTER, (uiFocus == 4), nullptr, nullptr)) {
+    // Close down
+    if (interactive && button(0.5f, Vslide(closeV, +1.0f, 70.0f), "Close [Esc]", S(Ui(0.85f)),
+        Alignment::CENTER, (uiFocus == 4), nullptr, nullptr)) {
         ui_settings_open_ = false;
         active_input_ = -1;
         rename_gate_open_ = false;
@@ -830,7 +897,7 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
 
     // Slightly faster closing for a crisp finish (tweak to taste)
     constexpr float kTauOpen = 0.10f;  // ~100ms feel
-    constexpr float kTauClose = 0.07f;  // ~70ms feel
+    constexpr float kTauClose = 0.085f;  // ~75ms feel
 
     g_helpAnim = Towards(g_helpAnim, help_open_ ? 1.0f : 0.0f, static_cast<float>(dt), kTauOpen, kTauClose);
     g_qsAnim = Towards(g_qsAnim, settings_open_ ? 1.0f : 0.0f, static_cast<float>(dt), kTauOpen, kTauClose);
