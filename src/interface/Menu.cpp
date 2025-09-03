@@ -13,7 +13,6 @@ static bool IsCapsLockOn() {
 #endif
 }
 
-
 namespace {
     // One source of truth for the help lines
     static const char* kHelpLines[] = {
@@ -32,6 +31,7 @@ namespace {
     static bool g_anyHoverThisFrame = false;
     static GLFWcursor* g_cursorHand = nullptr;
     static GLFWcursor* g_cursorArrow = nullptr;
+
 
     // Generic renderer for the help text; draws at any anchor/scale/alignment
     static void RenderHelpBlock(
@@ -96,6 +96,27 @@ namespace {
     // UTF-8 icons (make sure your source file is saved as UTF-8)
     static const char* ICON_SETTINGS = U8C("\u2699"); // ⚙
     static const char* ICON_INFO = U8C("\u2139"); // ℹ
+
+    // Smooth modal animation state (0..1)
+    static float g_helpAnim = 0.0f;
+    static float g_qsAnim = 0.0f;
+    static float g_uiAnim = 0.0f;
+
+    // --- Animation helpers ---
+    static inline float EaseInOutCubic(float t) {
+        t = std::clamp(t, 0.0f, 1.0f);
+        return (t < 0.5f) ? 4.0f * t * t * t : 1.0f - std::pow(-2.0f * t + 2.0f, 3.0f) * 0.5f;
+    }
+
+    // Critically-damped style "towards" using exact exponential step.
+    // tau controls how "snappy" it is; smaller = faster.
+    static inline float Towards(float cur, float target, float dt, float tauOpen, float tauClose) {
+        const float tau = (target > cur) ? tauOpen : tauClose;              // close a bit faster
+        const float k = 1.0f - std::exp(-static_cast<float>(dt) / tau);   // frame-rate independent
+        float out = cur + (target - cur) * k;
+        if (std::fabs(out - target) < 0.001f) out = target;                 // snap tiny tail
+        return out;
+    }
 
 }
 
@@ -340,9 +361,16 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mou
     const float yBottom = 0.5f * (height_ - totalH);
     const float yTop = yBottom + totalH;
 
+	// Animation easing (0 = closed, 1 = fully open)
+    const float a = std::clamp(g_qsAnim, 0.0f, 1.0f);
+    const float ease = EaseInOutCubic(a);
+    auto V = [&](float v) { return (1.0f - ease) * 0.5f + ease * v; };
+    auto S = [&](float s) { return s * (0.92f + 0.08f * ease); };
+    const bool interactive = (settings_open_ && ease > 0.08f);
+
     // ---------- Title (TOP, centered) ----------
     const float titleCy = yTop - 0.5f * titleH;
-    AddText(0.5f, titleCy / height_, "Quick Setup  v", titleScale, Alignment::CENTER, true);
+    AddText(0.5f, V(titleCy / height_), "Quick Setup  v", S(titleScale), Alignment::CENTER, true);
 
     // Row centers (go DOWN from title)
     const float row1Cy = yTop - titleH - gapTitleToRows - 0.5f * rowH;
@@ -354,11 +382,27 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mou
     const float sfLeftCx = row1Left + sfW + hGap + btnW * 0.5f;
     const float sfRightCx = sfLeftCx + btnW + hGap;
 
+    AddText(sfCx / width_, V(row1Cy / height_), sf, S(rowScale), Alignment::CENTER, true);
+    if (interactive && button(sfLeftCx / width_, V(row1Cy / height_), "<", S(rowScale), Alignment::CENTER, false, nullptr, nullptr))
+        Config::power_coeff -= 0.05f;
+    if (interactive && button(sfRightCx / width_, V(row1Cy / height_), ">", S(rowScale), Alignment::CENTER, false, nullptr, nullptr))
+        Config::power_coeff += 0.05f;
+
     // Row 2 (centered horizontally as a group)
     const float row2Left = 0.5f * width_ - 0.5f * row2W;
     const float bfCx = row2Left + bfW * 0.5f;
     const float bfLeftCx = row2Left + bfW + hGap + btnW * 0.5f;
     const float bfRightCx = bfLeftCx + btnW + hGap;
+
+    AddText(bfCx / width_, V(row2Cy / height_), bf, S(rowScale), Alignment::CENTER, true);
+    if (interactive && button(bfLeftCx / width_, V(row2Cy / height_), "<", S(rowScale), Alignment::CENTER, false, nullptr, nullptr)) {
+        Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
+        Config::velocity_multiplier = Config::linear_damping;
+    }
+    if (interactive && button(bfRightCx / width_, V(row2Cy / height_), ">", S(rowScale), Alignment::CENTER, false, nullptr, nullptr)) {
+        Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
+        Config::velocity_multiplier = Config::linear_damping;
+    }
 
     // Keyboard focus (0 = strike force, 1 = friction)
     static int focus = 0;
@@ -375,31 +419,15 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mou
     const bool leftEdge = (kLeft == GLFW_PRESS && prevLeft == GLFW_RELEASE);
     const bool rightEdge = (kRight == GLFW_PRESS && prevRight == GLFW_RELEASE);
 
-    if (upEdge)   focus = 0;
-    if (downEdge) focus = 1;
 
-    // --- Row 1: Strike force ---
-    AddText(sfCx / width_, row1Cy / height_, sf, rowScale, Alignment::CENTER, (focus == 0));
-    if (button(sfLeftCx / width_, row1Cy / height_, "<", rowScale, Alignment::CENTER, false, nullptr, nullptr))
-        Config::power_coeff -= 0.05f;
-    if (button(sfRightCx / width_, row1Cy / height_, ">", rowScale, Alignment::CENTER, false, nullptr, nullptr))
-        Config::power_coeff += 0.05f;
+    if (interactive) {
+        if (upEdge)   focus = 0;
+        if (downEdge) focus = 1;
+    }
     if (focus == 0) {
-        if (leftEdge)  Config::power_coeff -= 0.05f;
-        if (rightEdge) Config::power_coeff += 0.05f;
-    }
-
-    // --- Row 2: Ball friction ---
-    AddText(bfCx / width_, row2Cy / height_, bf, rowScale, Alignment::CENTER, (focus == 1));
-    if (button(bfLeftCx / width_, row2Cy / height_, "<", rowScale, Alignment::CENTER, false, nullptr, nullptr)) {
-        Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
-        Config::velocity_multiplier = Config::linear_damping;
-    }
-    if (button(bfRightCx / width_, row2Cy / height_, ">", rowScale, Alignment::CENTER, false, nullptr, nullptr)) {
-        Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
-        Config::velocity_multiplier = Config::linear_damping;
-    }
-    if (focus == 1) {
+        if (leftEdge) Config::power_coeff -= 0.05f;
+		if (rightEdge) Config::power_coeff += 0.05f;
+    } else {
         if (leftEdge) {
             Config::linear_damping = std::max(0.940f, Config::linear_damping - 0.0005f);
             Config::velocity_multiplier = Config::linear_damping;
@@ -408,11 +436,11 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mou
             Config::linear_damping = std::min(0.9995f, Config::linear_damping + 0.0005f);
             Config::velocity_multiplier = Config::linear_damping;
         }
-    }
+	}
 
     // Close (BOTTOM)
     const float closeCy = yBottom + 0.5f * closeH;
-    if (button(0.5f, closeCy / height_, "Close [Esc]", closeScale, Alignment::CENTER, false, nullptr, nullptr)) {
+    if (interactive && button(0.5f, V(closeCy / height_), "Close [Esc]", S(closeScale), Alignment::CENTER, false, nullptr, nullptr)) {
         settings_open_ = false;
         selected_ = has_started ? 2 : 1;
     }
@@ -429,59 +457,55 @@ void Menu::DrawQuickSetupModal(int winW, int winH, float /*mouseX*/, float /*mou
 
 void Menu::DrawHelpModal(bool has_started)
 {
-    // Scales
     const float titleScale = Ui(1.1f);
     const float lineScale = Ui(0.75f);
     const float closeScale = Ui(0.8f);
 
-    // Metrics (pixels)
     const float titleH = estimateHeightPx(titleScale);
     const float lineH = estimateHeightPx(lineScale);
     const float closeH = estimateHeightPx(closeScale);
 
-    // Spacing (pixels)
     const float gapTitleToList = lineH * 0.95f;
-    const float listStep = lineH * 1.10f;  // center-to-center between lines
+    const float listStep = lineH * 1.10f;
     const float gapListToClose = lineH * 0.95f;
 
-    // Total modal height
     const float listH = lineH + (kHelpCount - 1) * listStep;
     const float totalH = titleH + gapTitleToList + listH + gapListToClose + closeH;
 
-    // Center vertically
     const float yBottom = 0.5f * (height_ - totalH);
     const float yTop = yBottom + totalH;
 
-    // Title (TOP)
-    const float titleCy = yTop - 0.5f * titleH;
-    AddText(0.5f, titleCy / height_, std::string(ICON_INFO) + "  How to Play",
-        titleScale, Alignment::CENTER, true);
+    const float a = std::clamp(g_helpAnim, 0.0f, 1.0f);
+    const float ease = EaseInOutCubic(a);                // smoothstep
+    auto V = [&](float v) { return (1.0f - ease) * 0.5f + ease * v; };
+    auto S = [&](float s) { return s * (0.92f + 0.08f * ease); }; // subtle scale
+    const bool interactive = (help_open_ && ease > 0.08f);
 
-    // Help lines (go DOWN from title)
+    const float titleCy = yTop - 0.5f * titleH;
+    AddText(0.5f, V(titleCy / height_), std::string(ICON_INFO) + "  How to Play",
+        S(titleScale), Alignment::CENTER, true);
+
     float y = yTop - titleH - gapTitleToList - 0.5f * lineH;
     for (int i = 0; i < kHelpCount; ++i) {
-        AddText(0.5f, y / height_, kHelpLines[i], lineScale, Alignment::CENTER, false);
+        AddText(0.5f, V(y / height_), kHelpLines[i], S(lineScale), Alignment::CENTER, false);
         y -= listStep;
     }
 
-    // Close (BOTTOM)
     const float closeCy = yBottom + 0.5f * closeH;
-    if (button(0.5f, closeCy / height_, "Close [Esc]", closeScale,
-        Alignment::CENTER, false, nullptr, nullptr)) {
+    if (interactive && button(0.5f, V(closeCy / height_), "Close [Esc]",
+        S(closeScale), Alignment::CENTER, false, nullptr, nullptr)) {
         help_open_ = false;
         selected_ = has_started ? 3 : 2;
     }
 
-    // Esc closes
-    static int prevEscHelp = GLFW_RELEASE;
+    static int prevEsc = GLFW_RELEASE;
     int kEsc = glfwGetKey(glfwGetCurrentContext(), GLFW_KEY_ESCAPE);
-    if (kEsc == GLFW_PRESS && prevEscHelp == GLFW_RELEASE) {
+    if (interactive && kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
         help_open_ = false;
         selected_ = has_started ? 3 : 2;
     }
-    prevEscHelp = kEsc;
+    prevEsc = kEsc;
 }
-
 
 
 bool Menu::DrawSettingsIcon(int /*winW*/, int /*winH*/, bool selected)
@@ -519,8 +543,16 @@ void Menu::DrawUiSettingsModal(bool has_started)
     const float hintV = row3V - vpx(gap_px * 0.90f);
     const float closeV = hintV - vpx(gap_px);                 // Close
 
-    AddText(0.5f, headV, std::string(ICON_SETTINGS) + "  Settings",
-        titleScale, Alignment::CENTER, true);
+
+    // --- animation
+    const float a = std::clamp(g_uiAnim, 0.0f, 1.0f);
+    const float ease = EaseInOutCubic(a);
+    auto V = [&](float v) { return (1.0f - ease) * 0.5f + ease * v; };
+    auto S = [&](float s) { return s * (0.92f + 0.08f * ease); };
+    const bool interactive = (ui_settings_open_ && ease > 0.08f);
+
+    AddText(0.5f, V(headV), std::string(ICON_SETTINGS) + "  Settings",
+        S(titleScale), Alignment::CENTER, true);
 
     // -------------------------------
     // Keyboard focus & key edges
@@ -577,14 +609,14 @@ void Menu::DrawUiSettingsModal(bool has_started)
     for (int i = 0; i < kOptCount; ++i) {
         const bool on = std::fabs(ui_scale_ - kOpts[i].val) < 0.001f;
         const float centerU = (x + widths[i] * 0.5f) / static_cast<float>(width_);
-        if (button(centerU, row1V, labels[i], cbScale, Alignment::CENTER, (on || uiFocus == 0), nullptr, nullptr)) {
+        if (button(centerU, V(row1V), labels[i], S(cbScale), Alignment::CENTER, (on || uiFocus == 0), nullptr, nullptr)) {
             ui_scale_ = kOpts[i].val;
         }
         x += widths[i] + colGapPx;
     }
 
     // Keyboard cycle UI scale when focused on row 0 (not editing)
-    if (active_input_ == -1 && uiFocus == 0) {
+    if (interactive && active_input_ == -1 && uiFocus == 0) {
         auto idxFromScale = [&]() {
             int best = 0; float bd = 1e9f;
             for (int i = 0; i < kOptCount; ++i) { float d = std::fabs(ui_scale_ - kOpts[i].val); if (d < bd) { bd = d; best = i; } }
@@ -599,10 +631,10 @@ void Menu::DrawUiSettingsModal(bool has_started)
     // Guideline toggle
     // -------------------------------
     const std::string gLabel = std::string(show_guideline_ ? "[x] " : "[ ] ") + "Guideline";
-    if (button(0.5f, guideV, gLabel, Ui(0.90f), Alignment::CENTER, (uiFocus == 1), nullptr, nullptr)) {
+    if (interactive && button(0.5f, V(guideV), gLabel, S(Ui(0.90f)), Alignment::CENTER, (uiFocus == 1), nullptr, nullptr)) {
         show_guideline_ = !show_guideline_;
     }
-    if (active_input_ == -1 && uiFocus == 1 && (leftEdge || rightEdge || enterEdge)) {
+    if (interactive && active_input_ == -1 && uiFocus == 1 && (leftEdge || rightEdge || enterEdge)) {
         show_guideline_ = !show_guideline_;
     }
 
@@ -611,6 +643,8 @@ void Menu::DrawUiSettingsModal(bool has_started)
     // -------------------------------
     auto nameRow = [&](float v, const char* label, int fieldIndex, std::string& target)
         {
+			const float baseScale = Ui(0.95f);
+			const float drawScale = S(baseScale);
             std::string field = target;
             if (active_input_ == fieldIndex && canEditNames) {
                 const bool caretOn = std::fmod(glfwGetTime(), 1.0) < 0.5;
@@ -618,10 +652,12 @@ void Menu::DrawUiSettingsModal(bool has_started)
             }
             // Highlight either when editing or when row is focused (2 or 3)
             const bool rowFocused = (uiFocus == (fieldIndex == 0 ? 2 : 3));
-            AddText(0.5f, v, std::string(label) + field, Ui(0.95f), Alignment::CENTER,
+			const float drawV = V(v);
+
+            AddText(0.5f, drawV, std::string(label) + field, drawScale, Alignment::CENTER,
                 (active_input_ == fieldIndex) || rowFocused);
 
-            if (!canEditNames) return;
+            if (!canEditNames || !interactive) return;
 
             const float labelW = estimateWidthPx(label, Ui(0.95f));
             const float fieldW = std::max(240.0f * ui_scale_, estimateWidthPx("MMMMMMMMMMMMMMMM", Ui(0.95f)));
@@ -641,7 +677,7 @@ void Menu::DrawUiSettingsModal(bool has_started)
     nameRow(row3V, "Player 2: ", 1, p2_name_);
 
     // Start editing on Enter/Tab if focused on a name row and not already editing
-    if (canEditNames && active_input_ == -1) {
+    if (interactive && canEditNames && active_input_ == -1) {
         if (uiFocus == 2 && (enterEdge || tabEdge)) active_input_ = 0;
         if (uiFocus == 3 && (enterEdge || tabEdge)) active_input_ = 1;
     }
@@ -652,7 +688,7 @@ void Menu::DrawUiSettingsModal(bool has_started)
     // - Enter/Tab advances P1 -> P2 -> Close
     // - Esc exits the field
     // -------------------------------
-    if (canEditNames && (active_input_ == 0 || active_input_ == 1)) {
+    if (interactive && canEditNames && (active_input_ == 0 || active_input_ == 1)) {
         auto& target = (active_input_ == 0 ? p1_name_ : p2_name_);
         const int maxCodepoints = 18;
 
@@ -710,10 +746,10 @@ void Menu::DrawUiSettingsModal(bool has_started)
     // Hint + Close
     // -------------------------------
     if (has_started && !rename_gate_open_) {
-        AddText(0.5f, hintV, "Names are editable after Reset game.", Ui(0.75f), Alignment::CENTER, false);
+        AddText(0.5f, V(hintV), "Names are editable after Reset game.", S(Ui(0.75f)), Alignment::CENTER, false);
     }
 
-    if (button(0.5f, closeV, "Close [Esc]", Ui(0.85f), Alignment::CENTER, (uiFocus == 4), nullptr, nullptr)) {
+    if (interactive && button(0.5f, V(closeV), "Close [Esc]", S(Ui(0.85f)), Alignment::CENTER, (uiFocus == 4), nullptr, nullptr)) {
         ui_settings_open_ = false;
         active_input_ = -1;
         rename_gate_open_ = false;
@@ -724,7 +760,7 @@ void Menu::DrawUiSettingsModal(bool has_started)
     // - if editing a field → exit field
     // - else → close modal
     // -------------------------------
-    if (kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
+    if (interactive && kEsc == GLFW_PRESS && prevEsc == GLFW_RELEASE) {
         if (active_input_ != -1) {
             active_input_ = -1;
         }
@@ -737,7 +773,7 @@ void Menu::DrawUiSettingsModal(bool has_started)
     // -------------------------------
     // Arrow navigation between rows (only when NOT editing)
     // -------------------------------
-    if (active_input_ == -1) {
+    if (interactive && active_input_ == -1) {
         if (upEdge)   uiFocus = wrap(uiFocus - 1, 0, 4);
         if (downEdge) uiFocus = wrap(uiFocus + 1, 0, 4);
 
@@ -781,10 +817,29 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
 
     mouse_edge_down_ = (curMouse == GLFW_PRESS && prevMouse == GLFW_RELEASE);
 
+
+    // --- modal animation (open→1, closed→0) ---
+    static double tPrev = 0.0;
+    double tNow = glfwGetTime();
+    if (tPrev == 0.0) tPrev = tNow;
+    double dt = tNow - tPrev;
+    tPrev = tNow;
+
     // Reset per-frame hover flag
     g_anyHoverThisFrame = false;
 
-    const bool modalOpen = settings_open_ || help_open_ || ui_settings_open_;
+    // Slightly faster closing for a crisp finish (tweak to taste)
+    constexpr float kTauOpen = 0.10f;  // ~100ms feel
+    constexpr float kTauClose = 0.07f;  // ~70ms feel
+
+    g_helpAnim = Towards(g_helpAnim, help_open_ ? 1.0f : 0.0f, static_cast<float>(dt), kTauOpen, kTauClose);
+    g_qsAnim = Towards(g_qsAnim, settings_open_ ? 1.0f : 0.0f, static_cast<float>(dt), kTauOpen, kTauClose);
+    g_uiAnim = Towards(g_uiAnim, ui_settings_open_ ? 1.0f : 0.0f, static_cast<float>(dt), kTauOpen, kTauClose);
+
+    // Block background nav while any modal is animating
+    const bool modalOpen =
+        settings_open_ || help_open_ || ui_settings_open_ ||
+        g_helpAnim > 0.001f || g_qsAnim > 0.001f || g_uiAnim > 0.001f;
 
     if (!modalOpen) ControlState(); // keeps up/down behavior
 
@@ -836,9 +891,10 @@ void Menu::Draw(const bool not_loaded, const bool has_started)
     else              DrawPauseMenu(modalOpen, winW, winH, mouseX, mouseY, curEnter, prevEnter, selected_);
 
     // Modals
-    if (settings_open_)    DrawQuickSetupModal(winW, winH, mouseX, mouseY, has_started);
-    if (help_open_)        DrawHelpModal(has_started);
-    if (ui_settings_open_) DrawUiSettingsModal(has_started);
+    // Draw modals while animating, not just while *open*
+    if (g_qsAnim > 0.001f) DrawQuickSetupModal(winW, winH, mouseX, mouseY, has_started);
+    if (g_helpAnim > 0.001f) DrawHelpModal(has_started);
+    if (g_uiAnim > 0.001f) DrawUiSettingsModal(has_started);
 
     // ⚙ Settings icon (keyboard-activatable)
     const int gearIndex = has_started ? 5 : 3; // index we gave to the gear on each page
