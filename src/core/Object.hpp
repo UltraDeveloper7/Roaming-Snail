@@ -44,7 +44,6 @@ public:
 	const std::vector<std::shared_ptr<Material>>& GetMaterials() const {
 		return materials_;
 	}
-	static std::shared_ptr<Shader> GetShader();
 
 	bool HasValidMesh() const;
 

@@ -151,9 +151,3 @@ glm::mat4 Object::GetModelMatrix() const
 bool Object::HasValidMesh() const {
 	return !meshes_.empty();
 }
-
-std::shared_ptr<Shader> Object::GetShader()
-{
-	static const auto shader = std::make_shared<Shader>(Config::vertex_path, Config::fragment_path);
-	return shader;
-}
