@@ -65,8 +65,6 @@ The project is designed as a real-time graphics and interaction assignment. It f
 
 ## Project Preview
 
-> Add your own screenshots inside `docs/images/` and update the links below.
-
 ### Main Menu
 
 ![Main Menu](docs/images/main_menu.png)
