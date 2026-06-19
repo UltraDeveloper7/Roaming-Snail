@@ -1,6 +1,7 @@
 #include "../precompiled.h"
 #include "Environment.hpp"
 #include "../core/Loader.hpp"
+#include "../core/GLUtils.hpp"
 
 Environment::Environment() : fbo_{}, rbo_{},
 cube_map_shader_(std::make_unique<Shader>(Config::cubemap_vertex_path, Config::cubemap_fragment_path)),
@@ -50,6 +51,12 @@ prefilter_shader_(std::make_unique<Shader>(Config::cubemap_vertex_path, Config::
 
     brdf_lut_ = std::make_unique<Texture>(nullptr, Config::cube_map_size, Config::cube_map_size);
     RenderBrdfLut();
+}
+
+Environment::~Environment()
+{
+    GLUtils::DeleteRenderbuffer(rbo_);
+    GLUtils::DeleteFramebuffer(fbo_);
 }
 
 void Environment::Prepare() const
@@ -108,6 +115,11 @@ void Environment::CreateBuffers()
     glBindRenderbuffer(GL_RENDERBUFFER, rbo_);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, Config::cube_map_size, Config::cube_map_size);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo_);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        throw std::runtime_error("Environment capture framebuffer incomplete");
+    }
 }
 
 void Environment::CreateCube()
@@ -176,6 +188,28 @@ void Environment::CreateQuad()
     quad_ = std::make_unique<Mesh>(vertices);
 }
 
+void Environment::RenderCubeMapFaces(
+    const Shader& shader,
+    const glm::mat4 capture_views[6],
+    GLuint targetTexture,
+    int mipLevel
+) const
+{
+    for (unsigned int i = 0; i < 6; ++i)
+    {
+        shader.SetMat4(capture_views[i], "view");
+        glFramebufferTexture2D(
+            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, targetTexture, mipLevel
+        );
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        cube_->Bind();
+        cube_->Draw();
+        cube_->Unbind();
+    }
+}
+
 void Environment::RenderCubeMap(const glm::mat4& capture_projection, const glm::mat4 capture_views[6]) const
 {
     cube_map_shader_->Bind();
@@ -186,16 +220,9 @@ void Environment::RenderCubeMap(const glm::mat4& capture_projection, const glm::
 
     glViewport(0, 0, Config::cube_map_size, Config::cube_map_size);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
-    for (unsigned int i = 0; i < 6; ++i)
-    {
-        cube_map_shader_->SetMat4(capture_views[i], "view");
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, cube_map_->GetId(), 0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        cube_->Bind();
-        cube_->Draw();
-        cube_->Unbind();
-    }
+    RenderCubeMapFaces(*cube_map_shader_, capture_views, cube_map_->GetId());
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     cube_map_->Bind();
@@ -219,16 +246,8 @@ void Environment::RenderIrradianceMap(const glm::mat4& capture_projection, const
     glViewport(0, 0, Config::irradiance_scale, Config::irradiance_scale);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_);
 
-    for (unsigned int i = 0; i < 6; ++i)
-    {
-        irradiance_shader_->SetMat4(capture_views[i], "view");
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradiance_map_->GetId(), 0);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    RenderCubeMapFaces(*irradiance_shader_, capture_views, irradiance_map_->GetId());
 
-        cube_->Bind();
-        cube_->Draw();
-        cube_->Unbind();
-    }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     irradiance_shader_->Unbind();
 }
@@ -258,16 +277,7 @@ void Environment::RenderPrefilterMap(const glm::mat4& capture_projection, const 
         const float roughness = static_cast<float>(mip) / static_cast<float>(Config::max_mip_levels - 1);
         prefilter_shader_->SetFloat(roughness, "roughness");
 
-        for (unsigned int i = 0; i < 6; ++i)
-        {
-            prefilter_shader_->SetMat4(capture_views[i], "view");
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, prefilter_map_->GetId(), mip);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            cube_->Bind();
-            cube_->Draw();
-            cube_->Unbind();
-        }
+        RenderCubeMapFaces(*prefilter_shader_, capture_views, prefilter_map_->GetId(), mip);
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     prefilter_shader_->Unbind();

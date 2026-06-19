@@ -1,5 +1,7 @@
 ﻿#include "../precompiled.h"
 #include "App.hpp"
+#include "GLUtils.hpp"
+#include "../Logger.hpp"
 #include <stb_image.h>
 
 
@@ -59,7 +61,7 @@ App::App() :
 
 	terrain_ = std::make_unique<Terrain>();
 	terrain_->Generate(Config::terrain_resolution, Config::terrain_size);
-	terrain_->SetTexture(terrain_texture_);
+	terrain_->SetTexture(static_cast<GLuint>(terrain_texture_->GetId()));
 
 	vegetation_ = std::make_unique<Vegetation>();
 	vegetation_->Init();
@@ -433,54 +435,21 @@ void App::LoadTerrainTexture()
 
 	if (!data)
 	{
-		std::cerr << "Failed to load terrain texture: " << texturePath << std::endl;
-		terrain_texture_ = 0;
-		return;
+		throw std::runtime_error(std::string("Failed to load terrain texture: ") + texturePath);
 	}
 
-	GLenum format = GL_RGB;
+	terrain_texture_ = std::make_shared<Texture>(data, width, height, channels);
+	stbi_image_free(data);
 
-	if (channels == 1)
-	{
-		format = GL_RED;
-	}
-	else if (channels == 3)
-	{
-		format = GL_RGB;
-	}
-	else if (channels == 4)
-	{
-		format = GL_RGBA;
-	}
-
-	glGenTextures(1, &terrain_texture_);
-	glBindTexture(GL_TEXTURE_2D, terrain_texture_);
-
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
-		format,
-		width,
-		height,
-		0,
-		format,
-		GL_UNSIGNED_BYTE,
-		data
-	);
-
-	glGenerateMipmap(GL_TEXTURE_2D);
-
+	terrain_texture_->Bind();
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	stbi_image_free(data);
-
-	std::cout << "Loaded terrain texture: " << texturePath
-		<< " (" << width << "x" << height << ", channels=" << channels << ")"
-		<< std::endl;
+	Logger::Log(
+		"Loaded terrain texture: " + std::string(texturePath)
+		+ " (" + std::to_string(width) + "x" + std::to_string(height)
+		+ ", channels=" + std::to_string(channels) + ")"
+	);
 }
 
 void App::InitPostProcessing()
@@ -530,37 +499,11 @@ void App::InitPostProcessing()
 
 void App::ResizePostProcessing(int width, int height)
 {
-	if (scene_fbo_ != 0)
-	{
-		glDeleteFramebuffers(1, &scene_fbo_);
-		scene_fbo_ = 0;
-	}
-
-	if (scene_color_texture_ != 0)
-	{
-		glDeleteTextures(1, &scene_color_texture_);
-		scene_color_texture_ = 0;
-	}
-
-	if (scene_depth_rbo_ != 0)
-	{
-		glDeleteRenderbuffers(1, &scene_depth_rbo_);
-		scene_depth_rbo_ = 0;
-	}
-
-	if (pingpong_fbo_[0] != 0)
-	{
-		glDeleteFramebuffers(2, pingpong_fbo_);
-		pingpong_fbo_[0] = 0;
-		pingpong_fbo_[1] = 0;
-	}
-
-	if (pingpong_color_[0] != 0)
-	{
-		glDeleteTextures(2, pingpong_color_);
-		pingpong_color_[0] = 0;
-		pingpong_color_[1] = 0;
-	}
+	GLUtils::DeleteFramebuffer(scene_fbo_);
+	GLUtils::DeleteTexture(scene_color_texture_);
+	GLUtils::DeleteRenderbuffer(scene_depth_rbo_);
+	GLUtils::DeleteFramebuffers(pingpong_fbo_, 2);
+	GLUtils::DeleteTextures(pingpong_color_, 2);
 
 	glGenFramebuffers(1, &scene_fbo_);
 	glBindFramebuffer(GL_FRAMEBUFFER, scene_fbo_);
@@ -606,7 +549,7 @@ void App::ResizePostProcessing(int width, int height)
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
-		std::cerr << "Scene framebuffer incomplete." << std::endl;
+		throw std::runtime_error("Scene framebuffer incomplete after creation");
 	}
 
 	glGenFramebuffers(2, pingpong_fbo_);
@@ -645,7 +588,7 @@ void App::ResizePostProcessing(int width, int height)
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
-			std::cerr << "Blur framebuffer incomplete: " << i << std::endl;
+			throw std::runtime_error("Blur framebuffer incomplete: " + std::to_string(i));
 		}
 	}
 
@@ -654,49 +597,13 @@ void App::ResizePostProcessing(int width, int height)
 
 void App::DestroyPostProcessing()
 {
-	if (screen_vbo_ != 0)
-	{
-		glDeleteBuffers(1, &screen_vbo_);
-		screen_vbo_ = 0;
-	}
-
-	if (screen_vao_ != 0)
-	{
-		glDeleteVertexArrays(1, &screen_vao_);
-		screen_vao_ = 0;
-	}
-
-	if (scene_depth_rbo_ != 0)
-	{
-		glDeleteRenderbuffers(1, &scene_depth_rbo_);
-		scene_depth_rbo_ = 0;
-	}
-
-	if (scene_color_texture_ != 0)
-	{
-		glDeleteTextures(1, &scene_color_texture_);
-		scene_color_texture_ = 0;
-	}
-
-	if (scene_fbo_ != 0)
-	{
-		glDeleteFramebuffers(1, &scene_fbo_);
-		scene_fbo_ = 0;
-	}
-
-	if (pingpong_color_[0] != 0)
-	{
-		glDeleteTextures(2, pingpong_color_);
-		pingpong_color_[0] = 0;
-		pingpong_color_[1] = 0;
-	}
-
-	if (pingpong_fbo_[0] != 0)
-	{
-		glDeleteFramebuffers(2, pingpong_fbo_);
-		pingpong_fbo_[0] = 0;
-		pingpong_fbo_[1] = 0;
-	}
+	GLUtils::DeleteBuffer(screen_vbo_);
+	GLUtils::DeleteVAO(screen_vao_);
+	GLUtils::DeleteRenderbuffer(scene_depth_rbo_);
+	GLUtils::DeleteTexture(scene_color_texture_);
+	GLUtils::DeleteFramebuffer(scene_fbo_);
+	GLUtils::DeleteTextures(pingpong_color_, 2);
+	GLUtils::DeleteFramebuffers(pingpong_fbo_, 2);
 }
 
 void App::BeginSceneFramebuffer()

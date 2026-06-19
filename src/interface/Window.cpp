@@ -75,8 +75,9 @@ void Window::ResetResizedFlag()
     resized_ = false;
 }
 
-void Window::SetWin32WindowIconFromICO(const wchar_t* path)
+void Window::SetWin32WindowIconFromICO([[maybe_unused]] const wchar_t* path)
 {
+#ifdef _WIN32
     if (!handle_) return;
 
     HWND hwnd = glfwGetWin32Window(handle_);
@@ -88,8 +89,7 @@ void Window::SetWin32WindowIconFromICO(const wchar_t* path)
 
     if (hBig) SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hBig);
     if (hSml) SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hSml);
-
-    // optional: keep handles to destroy on shutdown, or let OS clean up at process end
+#endif
 }
 
 // Convenience (optional)
@@ -113,7 +113,7 @@ void Window::OnError(int error, const char* description)
 {
     g_lastErrCode = error;
     g_lastErrMsg = description ? description : "";
-    // If you want to log the result: Logger::Log(std::string("[GLFW] ") + g_lastErrMsg);
+    std::cerr << "[GLFW error " << error << "] " << g_lastErrMsg << std::endl;
 }
 
 void Window::OnFramebufferResized(GLFWwindow* window, int width, int height)

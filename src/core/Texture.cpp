@@ -15,7 +15,7 @@ Texture::Texture(unsigned char* image_data, const int width, const int height, c
 	else if (channels == 4)
 		image_type = GL_RGBA;
 	else
-		throw std::exception("Invalid image channel count");
+		throw std::runtime_error("Invalid image channel count: " + std::to_string(channels));
 
 	glGenTextures(1, &texture_);
 	glBindTexture(GL_TEXTURE_2D, texture_);
@@ -66,6 +66,15 @@ Texture::Texture(float* image_data, const int width, const int height) :
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, width, height, 0, GL_RGB, GL_FLOAT, reinterpret_cast<void*>(image_data));
 	else
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RG16F, width, height, 0, GL_RG, GL_FLOAT, nullptr);
+}
+
+Texture::~Texture()
+{
+	if (texture_ != 0)
+	{
+		glDeleteTextures(1, &texture_);
+		texture_ = 0;
+	}
 }
 
 void Texture::Bind() const

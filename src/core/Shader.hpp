@@ -4,6 +4,12 @@ class Shader
 {
 public:
 	Shader(const std::string& vertex_path, const std::string& fragment_path, const std::string& geometry_path = {});
+	~Shader();
+
+	Shader(const Shader&) = delete;
+	Shader& operator=(const Shader&) = delete;
+	Shader(Shader&&) = delete;
+	Shader& operator=(Shader&&) = delete;
 
 	void Bind() const;
 	void Unbind() const;
@@ -17,6 +23,9 @@ public:
 	void SetIntArray(const char* name, const int* values, int count);
 	void SetBool(bool c, const std::string& name) const;
 
+	void ResetRenderFlags() const;
+	void ResetDepthFlags() const;
+
 	// Add a public getter for id_
 	unsigned GetID() const {
 		return id_;
@@ -27,5 +36,8 @@ private:
 	[[nodiscard]] unsigned LoadShader(unsigned type, const std::string& path) const;
 	void LinkProgram(unsigned vertex, unsigned fragment, unsigned geometry = 0);
 
+	GLint GetUniformLocation(const std::string& name) const;
+
 	unsigned id_;
+	mutable std::unordered_map<std::string, GLint> uniform_cache_;
 };

@@ -6,6 +6,7 @@
 #include "../interface/Menu.hpp"
 #include "../interface/TextRenderer.hpp"
 #include "../core/Shader.hpp"
+#include "../core/Texture.hpp"
 #include "../core/Environment.hpp"
 #include "../world/Terrain.hpp"
 #include "../world/Vegetation.hpp"
@@ -61,7 +62,7 @@ private:
 	int previous_pause_state_ = GLFW_RELEASE;
 	int previous_escape_state_ = GLFW_RELEASE;
 
-	GLuint terrain_texture_ = 0;
+	std::shared_ptr<Texture> terrain_texture_;
 
 	double delta_time_ = 0.0;
 	double last_frame_ = 0.0;

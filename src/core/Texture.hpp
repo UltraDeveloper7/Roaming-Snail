@@ -6,7 +6,7 @@ public:
 	Texture(int size, bool mipmap);
 	Texture(unsigned char* image_data, int width, int height, int channels);
 	Texture(float* image_data, int width, int height);
-	~Texture() = default;
+	~Texture();
 
 	Texture(const Texture&) = delete;
 	Texture(Texture&&) = delete;
@@ -17,6 +17,6 @@ public:
 	[[nodiscard]] int GetId() const { return static_cast<int>(texture_); }
 
 private:
-	unsigned texture_;
-	int type_;
+	GLuint texture_;
+	GLenum type_;
 };

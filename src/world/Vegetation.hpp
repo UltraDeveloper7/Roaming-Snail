@@ -36,6 +36,26 @@ public:
 	bool TryEat(const glm::vec3& snailPosition, float radius);
 	bool TryHitShell(const glm::vec3& shellPosition, float radius);
 
+	template<typename Func>
+	bool ForEachPlantInRadius(const glm::vec3& position, float radius, Func func)
+	{
+		bool any = false;
+		const glm::vec2 posXZ{ position.x, position.z };
+
+		for (Plant& plant : plants_)
+		{
+			if (plant.eaten) continue;
+
+			const glm::vec2 plantXZ{ plant.position.x, plant.position.z };
+			if (glm::distance(posXZ, plantXZ) <= radius)
+			{
+				if (func(plant)) return true;
+				any = true;
+			}
+		}
+		return any;
+	}
+
 private:
 	glm::mat4 BuildPlantModel(const Plant& plant) const;
 

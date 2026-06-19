@@ -64,6 +64,9 @@ private:
 
 	float GetTerrainSlopeAngle(const Terrain& terrain) const;
 
+	glm::mat4 ComputeBodyModelMatrix() const;
+	glm::mat4 ComputeShellModelMatrix() const;
+
 	glm::mat4 BuildModelMatrix(
 		const glm::vec3& localOffset,
 		const glm::vec3& localScale

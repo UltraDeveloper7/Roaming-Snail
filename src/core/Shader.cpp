@@ -25,11 +25,25 @@ Shader::Shader(const std::string& vertex_path, const std::string& fragment_path,
 
 std::string Shader::LoadShaderSource(const std::string& path) const
 {
+	if (!std::filesystem::exists(path))
+	{
+		throw std::runtime_error("Shader file not found: " + path);
+	}
+
 	std::ifstream file(path, std::ios::in | std::ios::binary);
+	if (!file.is_open())
+	{
+		throw std::runtime_error("Failed to open shader file: " + path);
+	}
+
+
     const size_t size = std::filesystem::file_size(path);
     std::string source(size, '\0');
 
     file.read(source.data(), static_cast<long long>(size));
+	if (!file) {
+		throw std::runtime_error("Failed to read shader source file: " + path);
+	}
 	file.close();
 	
 	return source;
@@ -51,7 +65,7 @@ GLuint Shader::LoadShader(const unsigned type, const std::string& path) const
 	{
 		char info_log[512];
 		glGetShaderInfoLog(shader, 512, nullptr, info_log);
-		throw std::exception(info_log);
+		throw std::runtime_error(std::string("Shader compilation failed: ") + info_log);
 	}
 
 	return shader;
@@ -77,10 +91,19 @@ void Shader::LinkProgram(const unsigned vertex, const unsigned fragment, const u
 	{
 		char info_log[512];
 		glGetProgramInfoLog(id_, 512, nullptr, info_log);
-		throw std::exception(info_log);
+		throw std::runtime_error(std::string("Shader program linking failed: ") + info_log);
 	}
 
 	glUseProgram(0);
+}
+
+Shader::~Shader()
+{
+	if (id_ != 0)
+	{
+		glDeleteProgram(id_);
+		id_ = 0;
+	}
 }
 
 void Shader::Bind() const
@@ -93,51 +116,78 @@ void Shader::Unbind() const
 	glUseProgram(0);
 }
 
+GLint Shader::GetUniformLocation(const std::string& name) const
+{
+	auto it = uniform_cache_.find(name);
+	if (it != uniform_cache_.end())
+	{
+		return it->second;
+	}
+
+	const GLint loc = glGetUniformLocation(id_, name.c_str());
+	uniform_cache_[name] = loc;
+	return loc;
+}
+
 void Shader::SetMat4(const glm::mat4& m, const std::string& name) const
 {
-	const auto my_loc = glGetUniformLocation(id_, name.c_str());
+	const auto my_loc = GetUniformLocation(name);
 	glUniformMatrix4fv(my_loc, 1, GL_FALSE, glm::value_ptr(m));
 }
 
 void Shader::SetVec2(const glm::vec2& v, const std::string& name) const
 {
-	const GLint loc = glGetUniformLocation(id_, name.c_str());
+	const GLint loc = GetUniformLocation(name);
 	glUniform2fv(loc, 1, glm::value_ptr(v));
 }
 
 void Shader::SetVec3(const glm::vec3& v, const std::string& name) const
 {
-	const auto my_loc = glGetUniformLocation(id_, name.c_str());
+	const auto my_loc = GetUniformLocation(name);
 	glProgramUniform3fv(id_, my_loc, 1, glm::value_ptr(v));
 }
 
 void Shader::SetVec4(const glm::vec4& v, const std::string& name) const
 {
-	const GLint loc = glGetUniformLocation(id_, name.c_str());
+	const GLint loc = GetUniformLocation(name);
 	glUniform4fv(loc, 1, glm::value_ptr(v));
 }
 
 void Shader::SetFloat(const float s, const std::string& name) const
 {
-	const auto my_loc = glGetUniformLocation(id_, name.c_str());
+	const auto my_loc = GetUniformLocation(name);
 	glUniform1f(my_loc, s);
 }
 
 void Shader::SetInt(const int n, const std::string& name) const
 {
-	const auto my_loc = glGetUniformLocation(id_, name.c_str());
+	const auto my_loc = GetUniformLocation(name);
 	glUniform1i(my_loc, n);
 }
 
 void Shader::SetIntArray(const char* name, const int* values, int count)
 {
-	GLint loc = glGetUniformLocation(id_, name);
+	const GLint loc = GetUniformLocation(std::string(name));
 	if (loc != -1)
 		glUniform1iv(loc, count, values);
 }
 
 void Shader::SetBool(const bool c, const std::string& name) const
 {
-	const auto my_loc = glGetUniformLocation(id_, name.c_str());
+	const auto my_loc = GetUniformLocation(name);
 	glUniform1i(my_loc, c);
+}
+
+void Shader::ResetRenderFlags() const
+{
+	SetBool(false, "uUseMaterial");
+	SetBool(false, "uUseTexture");
+	SetBool(false, "uUseObjectColor");
+	SetBool(false, "uUseVertexColor");
+}
+
+void Shader::ResetDepthFlags() const
+{
+	SetBool(false, "uDepthUseAlphaCutout");
+	SetBool(false, "material_hasDiffuseMap");
 }

@@ -91,8 +91,7 @@ void Vegetation::Draw(const std::shared_ptr<Shader>& shader) const
 
 	shader->Bind();
 
-	shader->SetBool(false, "uUseObjectColor");
-	shader->SetBool(false, "uUseVertexColor");
+	shader->ResetRenderFlags();
 	shader->SetBool(true, "uUseMaterial");
 	shader->SetBool(true, "uUseTexture");
 
@@ -110,8 +109,7 @@ void Vegetation::Draw(const std::shared_ptr<Shader>& shader) const
 
 	shader->SetVec3(glm::vec3(1.0f), "uColorTint");
 
-	shader->SetBool(false, "uUseMaterial");
-	shader->SetBool(false, "uUseTexture");
+	shader->ResetRenderFlags();
 
 	shader->Unbind();
 }
@@ -137,48 +135,20 @@ void Vegetation::DrawDepth(const std::shared_ptr<Shader>& shader) const
 
 bool Vegetation::TryEat(const glm::vec3& snailPosition, float radius)
 {
-	for (Plant& plant : plants_)
+	return ForEachPlantInRadius(snailPosition, radius, [](Plant& plant)
 	{
-		if (plant.eaten)
-		{
-			continue;
-		}
-
-		const glm::vec2 snailXZ{ snailPosition.x, snailPosition.z };
-		const glm::vec2 plantXZ{ plant.position.x, plant.position.z };
-
-		if (glm::distance(snailXZ, plantXZ) <= radius)
-		{
-			plant.eaten = true;
-			return true;
-		}
-	}
-
-	return false;
+		plant.eaten = true;
+		return true;
+	});
 }
 
 bool Vegetation::TryHitShell(const glm::vec3& shellPosition, float radius)
 {
-	bool hit = false;
-
-	for (Plant& plant : plants_)
+	return ForEachPlantInRadius(shellPosition, radius, [](Plant& plant)
 	{
-		if (plant.eaten)
-		{
-			continue;
-		}
-
-		const glm::vec2 shellXZ{ shellPosition.x, shellPosition.z };
-		const glm::vec2 plantXZ{ plant.position.x, plant.position.z };
-
-		if (glm::distance(shellXZ, plantXZ) <= radius)
-		{
-			plant.bend = 0.55f;
-			hit = true;
-		}
-	}
-
-	return hit;
+		plant.bend = 0.55f;
+		return false;
+	});
 }
 
 glm::mat4 Vegetation::BuildPlantModel(const Plant& plant) const

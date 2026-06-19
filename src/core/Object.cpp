@@ -9,25 +9,7 @@ Object::Object(const std::string& path)
 
 void Object::Draw(const std::shared_ptr<Shader>& shader)
 {
-	shader->Bind();
-
-	const glm::mat4 modelMatrix = GetModelMatrix();
-
-	shader->SetMat4(modelMatrix, "uModel");
-	shader->SetMat4(modelMatrix, "modelMatrix");
-
-	for (const auto& mesh : meshes_)
-	{
-		const auto material = materials_[mesh->GetMaterialId()];
-
-		material->Bind(shader);
-		mesh->Bind();
-		mesh->Draw();
-		mesh->Unbind();
-		material->Unbind(shader);
-	}
-
-	shader->Unbind();
+	DrawWithModelMatrix(shader, GetModelMatrix());
 }
 
 void Object::DrawWithModelMatrix(const std::shared_ptr<Shader>& shader, const glm::mat4& modelMatrix)
@@ -39,7 +21,17 @@ void Object::DrawWithModelMatrix(const std::shared_ptr<Shader>& shader, const gl
 
 	for (const auto& mesh : meshes_)
 	{
-		const auto material = materials_[mesh->GetMaterialId()];
+		const int matId = mesh->GetMaterialId();
+		if (matId < 0 || static_cast<size_t>(matId) >= materials_.size())
+		{
+			Logger::Log(
+				"Mesh references invalid material index: " + std::to_string(matId),
+				Logger::LogLevel::WARNING
+			);
+			continue;
+		}
+
+		const auto material = materials_[matId];
 
 		material->Bind(shader);
 		mesh->Bind();
@@ -83,10 +75,15 @@ void Object::DrawAlphaDepthWithModelMatrix(
 
 	for (const auto& mesh : meshes_)
 	{
-		const auto material = materials_[mesh->GetMaterialId()];
+		const int matId = mesh->GetMaterialId();
+		if (matId < 0 || static_cast<size_t>(matId) >= materials_.size())
+		{
+			continue;
+		}
 
-		shader->SetBool(false, "uDepthUseAlphaCutout");
-		shader->SetBool(false, "material_hasDiffuseMap");
+		const auto material = materials_[matId];
+
+		shader->ResetDepthFlags();
 
 		if (material && material->diffuse_texture)
 		{
@@ -103,8 +100,7 @@ void Object::DrawAlphaDepthWithModelMatrix(
 		mesh->Unbind();
 	}
 
-	shader->SetBool(false, "uDepthUseAlphaCutout");
-	shader->SetBool(false, "material_hasDiffuseMap");
+	shader->ResetDepthFlags();
 
 	glActiveTexture(GL_TEXTURE0);
 

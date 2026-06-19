@@ -9,7 +9,7 @@
 // -----------------------------
 namespace {
 	[[noreturn]] void throwf(const std::string& msg, const std::string& path) {
-		throw std::exception((msg + ": " + path).c_str());
+		throw std::runtime_error(msg + ": " + path);
 	}
 
 	// normalize a relative path key for the cache (keeps your original key as given)
@@ -25,6 +25,12 @@ namespace {
 
 void Loader::LoadModel(const std::string& path, std::vector<std::shared_ptr<Mesh>>& meshes, std::vector<std::shared_ptr<Material>>& materials)
 {
+	// Reject path traversal attempts
+	if (path.find("..") != std::string::npos)
+	{
+		throwf("Model path rejected (path traversal)", path);
+	}
+
 	tinyobj::ObjReaderConfig reader_config;
 	reader_config.vertex_color = false;
 	reader_config.triangulation_method = "earcut";
@@ -36,11 +42,11 @@ void Loader::LoadModel(const std::string& path, std::vector<std::shared_ptr<Mesh
 
 	if (!reader.ParseFromFile(model_path.string(), reader_config))
 	{
-		std::cerr << "TinyObj failed to parse model." << std::endl;
-		std::cerr << "Input path: " << path << std::endl;
-		std::cerr << "Resolved path: " << model_path.string() << std::endl;
-		std::cerr << "TinyObj error: " << reader.Error() << std::endl;
-		std::cerr << "TinyObj warning: " << reader.Warning() << std::endl;
+		Logger::Log("TinyObj failed to parse model.", Logger::LogLevel::ERROR);
+		Logger::Log("Input path: " + path, Logger::LogLevel::ERROR);
+		Logger::Log("Resolved path: " + model_path.string(), Logger::LogLevel::ERROR);
+		Logger::Log("TinyObj error: " + reader.Error(), Logger::LogLevel::ERROR);
+		Logger::Log("TinyObj warning: " + reader.Warning(), Logger::LogLevel::WARNING);
 
 		throwf("Failed to load model", path);
 	}
@@ -64,6 +70,13 @@ std::shared_ptr<Texture> Loader::LoadTexture(const std::string& path)
 	if (path.empty())
 		return nullptr;
 
+	// Reject path traversal attempts
+	if (path.find("..") != std::string::npos)
+	{
+		std::cerr << "Texture path rejected (path traversal): " << path << std::endl;
+		return nullptr;
+	}
+
 	if (unique_textures_.contains(path))
 		return unique_textures_[path];
 
@@ -72,25 +85,23 @@ std::shared_ptr<Texture> Loader::LoadTexture(const std::string& path)
 
 	if (!stbi_info(image_path.string().c_str(), &width, &height, &channels))
 	{
-		std::cerr << "Texture not found or cannot be decoded: "
-			<< image_path.string() << std::endl;
+		Logger::Log("Texture not found or cannot be decoded: " + image_path.string(), Logger::LogLevel::WARNING);
 		return nullptr;
 	}
 
 	unsigned char* image_data = stbi_load(image_path.string().c_str(), &width, &height, &channels, 0);
-	
-	std::cout
-		<< "Loaded texture: " << image_path.string()
-		<< " | channels=" << channels
-		<< " | size=" << width << "x" << height
-		<< std::endl;
 
 	if (!image_data)
 	{
-		std::cerr << "stbi_load failed for image: "
-			<< image_path.string() << std::endl;
+		Logger::Log("stbi_load failed for image: " + image_path.string(), Logger::LogLevel::ERROR);
 		return nullptr;
 	}
+
+	Logger::Log(
+		"Loaded texture: " + image_path.string()
+		+ " | channels=" + std::to_string(channels)
+		+ " | size=" + std::to_string(width) + "x" + std::to_string(height)
+	);
 
 	const auto texture = std::make_shared<Texture>(image_data, width, height, channels);
 
@@ -102,6 +113,12 @@ std::shared_ptr<Texture> Loader::LoadTexture(const std::string& path)
 
 std::shared_ptr<Texture> Loader::LoadEnvironment(const std::string& path)
 {
+	// Reject path traversal attempts
+	if (path.find("..") != std::string::npos)
+	{
+		throwf("HDR path rejected (path traversal)", path);
+	}
+
 	int channels, width, height;
 	const auto image_path = std::filesystem::current_path() / "assets/hdr" / path;
 
@@ -252,6 +269,6 @@ void Loader::UpdateMaterialDiffuseColor(const std::string& materialName, const g
 		Logger::Log("Updated material " + materialName + " diffuse color to: " + glm::to_string(newColor));
 	}
 	else {
-		Logger::Log("Material " + materialName + " not found!");
+		Logger::Log("Material " + materialName + " not found!", Logger::LogLevel::WARNING);
 	}
 }

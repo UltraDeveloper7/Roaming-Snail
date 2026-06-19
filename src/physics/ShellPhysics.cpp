@@ -38,13 +38,9 @@ namespace
 		const glm::vec3& terrainNormal
 	)
 	{
-		const glm::vec3 horizontalVelocity(
-			state.velocity.x,
-			0.0f,
-			state.velocity.z
-		);
+		const glm::vec3 hv = ShellPhysics::HorizontalVelocity(state);
 
-		const float speed = glm::length(horizontalVelocity);
+		const float speed = glm::length(hv);
 
 		if (speed < settings.launch_speed)
 		{
@@ -73,13 +69,9 @@ namespace
 		const ShellPhysics::Settings& settings
 	)
 	{
-		const glm::vec3 horizontalVelocity(
-			state.velocity.x,
-			0.0f,
-			state.velocity.z
-		);
+		const glm::vec3 hv = ShellPhysics::HorizontalVelocity(state);
 
-		const float speed = glm::length(horizontalVelocity);
+		const float speed = glm::length(hv);
 
 		if (speed < 0.001f)
 		{
@@ -87,7 +79,7 @@ namespace
 			return;
 		}
 
-		const glm::vec3 velocityDirection = glm::normalize(horizontalVelocity);
+		const glm::vec3 velocityDirection = glm::normalize(hv);
 
 		glm::vec3 axis =
 			glm::cross(glm::vec3(0.0f, 1.0f, 0.0f), velocityDirection);
@@ -263,29 +255,7 @@ namespace
 
 		position += state.velocity * dt;
 
-		const bool hitX =
-			position.x <= -settings.world_bound ||
-			position.x >= settings.world_bound;
-
-		const bool hitZ =
-			position.z <= -settings.world_bound ||
-			position.z >= settings.world_bound;
-
-		position.x =
-			glm::clamp(position.x, -settings.world_bound, settings.world_bound);
-
-		position.z =
-			glm::clamp(position.z, -settings.world_bound, settings.world_bound);
-
-		if (hitX)
-		{
-			state.velocity.x *= -0.35f;
-		}
-
-		if (hitZ)
-		{
-			state.velocity.z *= -0.35f;
-		}
+		ShellPhysics::ClampToBounds(position, state.velocity, settings.world_bound);
 
 		ResolveTerrainCollision(state, position, terrain, settings);
 		ClampVelocity(state, settings);
@@ -294,6 +264,18 @@ namespace
 
 namespace ShellPhysics
 {
+	void ClampToBounds(glm::vec3& position, glm::vec3& velocity, float bound, float restitution)
+	{
+		const bool hitX = position.x <= -bound || position.x >= bound;
+		const bool hitZ = position.z <= -bound || position.z >= bound;
+
+		position.x = glm::clamp(position.x, -bound, bound);
+		position.z = glm::clamp(position.z, -bound, bound);
+
+		if (hitX) velocity.x *= restitution;
+		if (hitZ) velocity.z *= restitution;
+	}
+
 	void Reset(State& state)
 	{
 		state.velocity = glm::vec3(0.0f);
@@ -336,15 +318,11 @@ namespace ShellPhysics
 			);
 		}
 
-		const glm::vec3 horizontalVelocity(
-			state.velocity.x,
-			0.0f,
-			state.velocity.z
-		);
+		const glm::vec3 hv = HorizontalVelocity(state);
 
-		if (glm::length2(horizontalVelocity) > 0.01f)
+		if (glm::length2(hv) > 0.01f)
 		{
-			const glm::vec3 direction = glm::normalize(horizontalVelocity);
+			const glm::vec3 direction = glm::normalize(hv);
 			yaw = std::atan2(direction.x, -direction.z);
 		}
 

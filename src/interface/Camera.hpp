@@ -11,9 +11,9 @@ public:
 	void Update(float frame_time);
 	void UpdateProjectionMatrix(int width, int height);
 
-	glm::mat4 GetViewMatrix() const { return view_matrix_; }
-	glm::mat4 GetProjectionMatrix() const { return projection_matrix_; }
-	glm::vec3 GetPosition() const { return position_; }
+	const glm::mat4& GetViewMatrix() const { return view_matrix_; }
+	const glm::mat4& GetProjectionMatrix() const { return projection_matrix_; }
+	const glm::vec3& GetPosition() const { return position_; }
 
 	void SetPosition(const glm::vec3& position) { position_ = position; }
 

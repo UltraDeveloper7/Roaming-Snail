@@ -373,3 +373,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# MSVC resource compiler intermediate files (may contain local paths)
+RC[a-z]*[0-9]*

@@ -1,22 +1,12 @@
 #include "../precompiled.h"
 #include "Snail.hpp"
+#include "../core/GLUtils.hpp"
 
 Snail::~Snail()
 {
-	if (ebo_ != 0)
-	{
-		glDeleteBuffers(1, &ebo_);
-	}
-
-	if (vbo_ != 0)
-	{
-		glDeleteBuffers(1, &vbo_);
-	}
-
-	if (vao_ != 0)
-	{
-		glDeleteVertexArrays(1, &vao_);
-	}
+	GLUtils::DeleteBuffer(ebo_);
+	GLUtils::DeleteBuffer(vbo_);
+	GLUtils::DeleteVAO(vao_);
 }
 
 void Snail::Init()
@@ -46,19 +36,19 @@ void Snail::Init()
 
 	try
 	{
-		std::cout << "Loading slug model: "
-			<< Config::slug_model_path << std::endl;
-
-		std::cout << "Loading shell model: "
-			<< Config::shell_model_path << std::endl;
+		Logger::Log("Loading slug model: " + std::string(Config::slug_model_path));
+		Logger::Log("Loading shell model: " + std::string(Config::shell_model_path));
 
 		slug_object_ = std::make_unique<Object>(Config::slug_model_path);
 		shell_object_ = std::make_unique<Object>(Config::shell_model_path);
 	}
 	catch (const std::exception& e)
 	{
-		std::cerr << "Failed to load snail objects: "
-			<< e.what() << std::endl;
+		Logger::Log(
+			"Failed to load snail objects: " + std::string(e.what())
+			+ " (falling back to placeholder geometry)",
+			Logger::LogLevel::ERROR
+		);
 
 		slug_object_.reset();
 		shell_object_.reset();
@@ -388,28 +378,7 @@ void Snail::UpdateShellPhysics(float dt, GLFWwindow* window, const Terrain& terr
 
 void Snail::ClampToTerrainBounds()
 {
-	const float bound = Config::snail_world_bound;
-
-	const bool hitX =
-		position_.x <= -bound ||
-		position_.x >= bound;
-
-	const bool hitZ =
-		position_.z <= -bound ||
-		position_.z >= bound;
-
-	position_.x = glm::clamp(position_.x, -bound, bound);
-	position_.z = glm::clamp(position_.z, -bound, bound);
-
-	if (hitX)
-	{
-		shell_physics_.velocity.x *= -0.35f;
-	}
-
-	if (hitZ)
-	{
-		shell_physics_.velocity.z *= -0.35f;
-	}
+	ShellPhysics::ClampToBounds(position_, shell_physics_.velocity, Config::snail_world_bound);
 }
 
 float Snail::GetTerrainSlopeAngle(const Terrain& terrain) const
@@ -500,6 +469,45 @@ glm::mat4 Snail::BuildModelMatrix(
 	return model;
 }
 
+glm::mat4 Snail::ComputeBodyModelMatrix() const
+{
+	const float bodyVisibility = 1.0f - retract_progress_;
+
+	const glm::vec3 bodyOffset = glm::mix(
+		Config::slug_body_normal_offset,
+		Config::slug_body_retracted_offset,
+		retract_progress_
+	);
+
+	const float retractScale = glm::max(0.08f, bodyVisibility);
+
+	const glm::vec3 bodyScale = glm::vec3(
+		Config::slug_body_draw_scale,
+		Config::slug_body_draw_scale * retractScale,
+		Config::slug_body_draw_scale * retractScale
+	);
+
+	return BuildModelMatrix(bodyOffset, bodyScale);
+}
+
+glm::mat4 Snail::ComputeShellModelMatrix() const
+{
+	const float shellPulse =
+		1.0f + Config::shell_retract_pulse * retract_progress_;
+
+	glm::mat4 shellModel = BuildModelMatrix(
+		Config::shell_draw_offset,
+		glm::vec3(Config::shell_draw_scale) * shellPulse
+	);
+
+	if (mode_ == Mode::Shell)
+	{
+		shellModel *= glm::mat4_cast(shell_physics_.rotation);
+	}
+
+	return shellModel;
+}
+
 bool Snail::IsBodyVisible() const
 {
 	return retract_progress_ < 0.98f;
@@ -521,58 +529,21 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
 	{
 		shader->Bind();
 
+		shader->ResetRenderFlags();
 		shader->SetBool(true, "uUseMaterial");
-		shader->SetBool(false, "uUseTexture");
-		shader->SetBool(false, "uUseObjectColor");
-		shader->SetBool(false, "uUseVertexColor");
 
 		shader->Unbind();
 
-		const float bodyVisibility = 1.0f - retract_progress_;
-
 		if (IsBodyVisible())
 		{
-			const glm::vec3 bodyOffset = glm::mix(
-				Config::slug_body_normal_offset,
-				Config::slug_body_retracted_offset,
-				retract_progress_
-			);
-
-			const float retractScale = glm::max(0.08f, bodyVisibility);
-
-			const glm::vec3 bodyScale = glm::vec3(
-				Config::slug_body_draw_scale,
-				Config::slug_body_draw_scale * retractScale,
-				Config::slug_body_draw_scale * retractScale
-			);
-
-			const glm::mat4 bodyModel =
-				BuildModelMatrix(bodyOffset, bodyScale);
-
-			slug_object_->DrawWithModelMatrix(shader, bodyModel);
+			slug_object_->DrawWithModelMatrix(shader, ComputeBodyModelMatrix());
 		}
 
-		const float shellPulse =
-			1.0f + Config::shell_retract_pulse * retract_progress_;
-
-		glm::mat4 shellModel = BuildModelMatrix(
-			Config::shell_draw_offset,
-			glm::vec3(Config::shell_draw_scale) * shellPulse
-		);
-
-		if (mode_ == Mode::Shell)
-		{
-			shellModel *= glm::mat4_cast(shell_physics_.rotation);
-		}
-
-		shell_object_->DrawWithModelMatrix(shader, shellModel);
+		shell_object_->DrawWithModelMatrix(shader, ComputeShellModelMatrix());
 
 		shader->Bind();
 
-		shader->SetBool(false, "uUseMaterial");
-		shader->SetBool(false, "uUseVertexColor");
-		shader->SetBool(false, "uUseObjectColor");
-		shader->SetBool(false, "uUseTexture");
+		shader->ResetRenderFlags();
 
 		shader->Unbind();
 
@@ -602,9 +573,7 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
 			BuildModelMatrix(bodyOffset, bodyScale);
 
 		shader->Bind();
-		shader->SetBool(false, "uUseMaterial");
-		shader->SetBool(false, "uUseTexture");
-		shader->SetBool(false, "uUseVertexColor");
+		shader->ResetRenderFlags();
 		shader->SetBool(true, "uUseObjectColor");
 		shader->SetVec3(glm::vec3(0.55f, 0.42f, 0.28f), "uObjectColor");
 		shader->SetMat4(bodyModel, "uModel");
@@ -633,9 +602,7 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
 	}
 
 	shader->Bind();
-	shader->SetBool(false, "uUseMaterial");
-	shader->SetBool(false, "uUseTexture");
-	shader->SetBool(false, "uUseVertexColor");
+	shader->ResetRenderFlags();
 	shader->SetBool(true, "uUseObjectColor");
 	shader->SetVec3(glm::vec3(0.28f, 0.16f, 0.08f), "uObjectColor");
 	shader->SetMat4(shellModel, "uModel");
@@ -650,10 +617,7 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
 	shader->Unbind();
 
 	shader->Bind();
-	shader->SetBool(false, "uUseObjectColor");
-	shader->SetBool(false, "uUseMaterial");
-	shader->SetBool(false, "uUseVertexColor");
-	shader->SetBool(false, "uUseTexture");
+	shader->ResetRenderFlags();
 	shader->Unbind();
 
 	glBindVertexArray(0);
@@ -663,44 +627,12 @@ void Snail::DrawDepth(const std::shared_ptr<Shader>& shader) const
 {
 	if (slug_object_ && shell_object_)
 	{
-		const float bodyVisibility = 1.0f - retract_progress_;
-
 		if (IsBodyVisible())
 		{
-			const glm::vec3 bodyOffset = glm::mix(
-				Config::slug_body_normal_offset,
-				Config::slug_body_retracted_offset,
-				retract_progress_
-			);
-
-			const float retractScale = glm::max(0.08f, bodyVisibility);
-
-			const glm::vec3 bodyScale = glm::vec3(
-				Config::slug_body_draw_scale,
-				Config::slug_body_draw_scale * retractScale,
-				Config::slug_body_draw_scale * retractScale
-			);
-
-			const glm::mat4 bodyModel =
-				BuildModelMatrix(bodyOffset, bodyScale);
-
-			slug_object_->DrawDepthWithModelMatrix(shader, bodyModel);
+			slug_object_->DrawDepthWithModelMatrix(shader, ComputeBodyModelMatrix());
 		}
 
-		const float shellPulse =
-			1.0f + Config::shell_retract_pulse * retract_progress_;
-
-		glm::mat4 shellModel = BuildModelMatrix(
-			Config::shell_draw_offset,
-			glm::vec3(Config::shell_draw_scale) * shellPulse
-		);
-
-		if (mode_ == Mode::Shell)
-		{
-			shellModel *= glm::mat4_cast(shell_physics_.rotation);
-		}
-
-		shell_object_->DrawDepthWithModelMatrix(shader, shellModel);
+		shell_object_->DrawDepthWithModelMatrix(shader, ComputeShellModelMatrix());
 
 		return;
 	}
@@ -730,8 +662,7 @@ void Snail::DrawDepth(const std::shared_ptr<Shader>& shader) const
 			BuildModelMatrix(bodyOffset, bodyScale);
 
 		shader->Bind();
-		shader->SetBool(false, "uDepthUseAlphaCutout");
-		shader->SetBool(false, "material_hasDiffuseMap");
+		shader->ResetDepthFlags();
 		shader->SetMat4(bodyModel, "modelMatrix");
 		shader->SetMat4(bodyModel, "uModel");
 
@@ -759,8 +690,7 @@ void Snail::DrawDepth(const std::shared_ptr<Shader>& shader) const
 	}
 
 	shader->Bind();
-	shader->SetBool(false, "uDepthUseAlphaCutout");
-	shader->SetBool(false, "material_hasDiffuseMap");
+	shader->ResetDepthFlags();
 	shader->SetMat4(shellModel, "modelMatrix");
 	shader->SetMat4(shellModel, "uModel");
 
@@ -786,17 +716,13 @@ void Snail::ApplySpeedBoost(float duration, float multiplier)
 
 	if (mode_ == Mode::Shell)
 	{
-		glm::vec3 horizontalVelocity(
-			shell_physics_.velocity.x,
-			0.0f,
-			shell_physics_.velocity.z
-		);
+		glm::vec3 hv = ShellPhysics::HorizontalVelocity(shell_physics_);
 
-		if (glm::length2(horizontalVelocity) > 0.01f)
+		if (glm::length2(hv) > 0.01f)
 		{
-			horizontalVelocity = glm::normalize(horizontalVelocity);
+			hv = glm::normalize(hv);
 			shell_physics_.velocity +=
-				horizontalVelocity * (multiplier - 1.0f) * 2.0f;
+				hv * (multiplier - 1.0f) * 2.0f;
 		}
 		else
 		{

@@ -56,6 +56,13 @@ namespace ShellPhysics
 		float world_bound = 0.0f;
 	};
 
+	inline glm::vec3 HorizontalVelocity(const State& state)
+	{
+		return { state.velocity.x, 0.0f, state.velocity.z };
+	}
+
+	void ClampToBounds(glm::vec3& position, glm::vec3& velocity, float bound, float restitution = -0.35f);
+
 	void Reset(State& state);
 
 	void Step(

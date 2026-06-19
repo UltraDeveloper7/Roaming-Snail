@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef _WIN32
 // Make Windows headers leaner and avoid macro collisions (min/max, GDI ERROR, etc.)
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -12,6 +13,7 @@
 #endif
 
 #include <windows.h>
+#endif // _WIN32
 
 
 #ifndef GLAD_GL_H_
@@ -21,8 +23,10 @@
 #include "Config.hpp"
 
 #include <GLFW/glfw3.h>
+#ifdef _WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
+#endif // _WIN32
 #include <glm/glm.hpp>
 #include <glm/vec3.hpp>
 #include <glm/gtc/type_ptr.hpp>

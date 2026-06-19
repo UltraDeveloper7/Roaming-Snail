@@ -8,6 +8,7 @@ class Environment final
 {
 public:
 	Environment();
+	~Environment();
 
 	void Prepare() const;
 	void Draw(const std::shared_ptr<Shader>& background_shader) const;
@@ -16,6 +17,13 @@ private:
 	void CreateBuffers();
 	void CreateCube();
 	void CreateQuad();
+
+	void RenderCubeMapFaces(
+		const Shader& shader,
+		const glm::mat4 capture_views[6],
+		GLuint targetTexture,
+		int mipLevel = 0
+	) const;
 
 	void RenderCubeMap(const glm::mat4& capture_projection, const glm::mat4 capture_views[6]) const;
 	void RenderIrradianceMap(const glm::mat4& capture_projection, const glm::mat4 capture_views[6]) const;

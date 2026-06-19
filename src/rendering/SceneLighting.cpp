@@ -1,19 +1,11 @@
 #include "../precompiled.h"
 #include "SceneLighting.hpp"
+#include "../core/GLUtils.hpp"
 
 SceneLighting::~SceneLighting()
 {
-	if (shadow_map_ != 0)
-	{
-		glDeleteTextures(1, &shadow_map_);
-		shadow_map_ = 0;
-	}
-
-	if (shadow_fbo_ != 0)
-	{
-		glDeleteFramebuffers(1, &shadow_fbo_);
-		shadow_fbo_ = 0;
-	}
+	GLUtils::DeleteTexture(shadow_map_);
+	GLUtils::DeleteFramebuffer(shadow_fbo_);
 }
 
 void SceneLighting::Init()
@@ -61,6 +53,11 @@ void SceneLighting::CreateShadowResources()
 
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		throw std::runtime_error("Shadow map framebuffer incomplete");
+	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

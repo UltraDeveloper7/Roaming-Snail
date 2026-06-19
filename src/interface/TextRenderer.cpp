@@ -237,9 +237,15 @@ uint32_t TextRenderer::NextCodepoint(const std::string& s, size_t& i) const {
 }
 
 bool TextRenderer::AddFaceFromPath(const std::filesystem::path& p) {
-	if (!std::filesystem::exists(p)) return false;
+	if (!std::filesystem::exists(p)) {
+		Logger::Log("Font file not found: " + p.string(), Logger::LogLevel::WARNING);
+		return false;
+	}
 	FT_Face f{};
-	if (FT_New_Face(ft_, p.string().c_str(), 0, &f)) return false;
+	if (FT_New_Face(ft_, p.string().c_str(), 0, &f)) {
+		Logger::Log("FreeType failed to load font: " + p.string(), Logger::LogLevel::WARNING);
+		return false;
+	}
 	FT_Set_Pixel_Sizes(f, 0, Config::default_font_size);
 	FT_Select_Charmap(f, FT_ENCODING_UNICODE);
 	faces_.push_back(f);
@@ -249,14 +255,14 @@ bool TextRenderer::AddFaceFromPath(const std::filesystem::path& p) {
 
 void TextRenderer::Load() {
 	if (FT_Init_FreeType(&ft_))
-		throw std::exception("Could not init FreeType Library");
+		throw std::runtime_error("Could not init FreeType Library");
 
 	// 1) Primary UI font (KEEP THIS AS A NORMAL TEXT FONT)
 	//    e.g. "NotoSans-Regular.ttf" (not the symbols file)
 	const auto primary = std::filesystem::current_path()
 		/ "assets" / "fonts" / Config::font_path;
 	if (!AddFaceFromPath(primary))
-		throw std::exception("Failed to load primary UI font");
+		throw std::runtime_error("Failed to load primary UI font: " + primary.string());
 
 	// 2) Fallbacks (try symbols + system)
 	// assets fallback: NotoSansSymbols2-Regular.ttf

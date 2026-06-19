@@ -1,22 +1,12 @@
 #include "../precompiled.h"
 #include "Terrain.hpp"
+#include "../core/GLUtils.hpp"
 
 Terrain::~Terrain()
 {
-    if (ebo_ != 0)
-    {
-        glDeleteBuffers(1, &ebo_);
-    }
-
-    if (vbo_ != 0)
-    {
-        glDeleteBuffers(1, &vbo_);
-    }
-
-    if (vao_ != 0)
-    {
-        glDeleteVertexArrays(1, &vao_);
-    }
+    GLUtils::DeleteBuffer(ebo_);
+    GLUtils::DeleteBuffer(vbo_);
+    GLUtils::DeleteVAO(vao_);
 }
 
 float Terrain::GetProceduralHeight(float x, float z) const
@@ -288,10 +278,8 @@ void Terrain::Draw(const std::shared_ptr<Shader>& shader) const
 
     shader->SetVec3(glm::vec3(1.0f), "uColorTint");
 
+    shader->ResetRenderFlags();
     shader->SetBool(texture_id_ != 0, "uUseTexture");
-    shader->SetBool(false, "uUseObjectColor");
-    shader->SetBool(false, "uUseVertexColor");
-    shader->SetBool(false, "uUseMaterial");
 
     if (texture_id_ != 0)
     {
@@ -316,7 +304,7 @@ void Terrain::Draw(const std::shared_ptr<Shader>& shader) const
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-    shader->SetBool(false, "uUseTexture");
+    shader->ResetRenderFlags();
 
     shader->Unbind();
 }

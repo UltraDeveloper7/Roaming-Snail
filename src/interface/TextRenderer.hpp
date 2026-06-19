@@ -1,5 +1,6 @@
 #pragma once
 #include "../precompiled.h"
+#include "../Logger.hpp"
 #include "Menu.hpp"
 #include "../core/Shader.hpp"
 #include "../core/Texture.hpp"

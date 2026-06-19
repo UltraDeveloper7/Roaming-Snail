@@ -1,6 +1,7 @@
 #include "../precompiled.h"
 #include "Mesh.hpp"
 #include "Vertex.hpp"
+#include "GLUtils.hpp"
 
 // Make sure the Vertex layout matches what shaders expect.
 static_assert(offsetof(Vertex, position) == 0, "Vertex.position must be at offset 0");
@@ -86,7 +87,7 @@ void Mesh::Draw() const
 
 void Mesh::Clear()
 {
-	if (vbo_) { glDeleteBuffers(1, &vbo_); vbo_ = 0; }
-	if (ebo_) { glDeleteBuffers(1, &ebo_); ebo_ = 0; }
-	if (vao_) { glDeleteVertexArrays(1, &vao_); vao_ = 0; }
+	GLUtils::DeleteBuffer(vbo_);
+	GLUtils::DeleteBuffer(ebo_);
+	GLUtils::DeleteVAO(vao_);
 }
