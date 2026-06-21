@@ -145,56 +145,133 @@ std::shared_ptr<Texture> Loader::LoadEnvironment(const std::string& path)
 // ============================================================================
 // Materials & Meshes (private helpers)
 // ============================================================================
-void Loader::LoadMaterials(std::vector<std::shared_ptr<Material>>& materials, const std::vector<tinyobj::material_t>& temp_materials)
+void Loader::LoadMaterials(
+	std::vector<std::shared_ptr<Material>>& materials,
+	const std::vector<tinyobj::material_t>& temp_materials
+)
 {
+	materials.clear();
+
+	if (temp_materials.empty())
+	{
+		materials.push_back(std::make_shared<Material>(
+			"default",
+			glm::vec3(0.75f),
+			glm::vec3(1.0f),
+			0.65f,
+			0.0f,
+			1.0f,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr
+		));
+
+		return;
+	}
+
 	for (const auto& material : temp_materials)
 	{
-		materials.push_back(std::make_shared<Material>
-			(
-				material.name,
-				glm::vec3{ material.diffuse[0], material.diffuse[1], material.diffuse[2] },
-				glm::vec3{ material.ambient[0], material.ambient[1], material.ambient[2] },
-				material.roughness,
-				material.metallic,
-				material.dissolve,
-				LoadTexture(material.diffuse_texname),
-				LoadTexture(material.ambient_texname),
-				LoadTexture(material.roughness_texname),
-				LoadTexture(material.metallic_texname),
-				LoadTexture(material.alpha_texname),
-				LoadTexture(material.normal_texname)
-			));
+		const std::string normalTexture =
+			!material.normal_texname.empty()
+			? material.normal_texname
+			: material.bump_texname;
+
+		const float roughness =
+			material.roughness > 0.0f
+			? material.roughness
+			: 0.65f;
+
+		const float dissolve =
+			material.dissolve > 0.0f
+			? material.dissolve
+			: 1.0f;
+
+		materials.push_back(std::make_shared<Material>(
+			material.name,
+			glm::vec3(
+				material.diffuse[0],
+				material.diffuse[1],
+				material.diffuse[2]
+			),
+			glm::vec3(
+				material.ambient[0],
+				material.ambient[1],
+				material.ambient[2]
+			),
+			roughness,
+			material.metallic,
+			dissolve,
+
+			LoadTexture(material.diffuse_texname),
+			LoadTexture(material.ambient_texname),
+			LoadTexture(material.roughness_texname),
+			LoadTexture(material.metallic_texname),
+			LoadTexture(material.alpha_texname),
+			LoadTexture(normalTexture)
+		));
 	}
 }
 
-void Loader::LoadMeshes(std::vector<std::shared_ptr<Mesh>>& meshes, const std::vector<tinyobj::shape_t>& temp_shapes, const tinyobj::attrib_t& temp_attrib)
+void Loader::LoadMeshes(
+	std::vector<std::shared_ptr<Mesh>>& meshes,
+	const std::vector<tinyobj::shape_t>& temp_shapes,
+	const tinyobj::attrib_t& temp_attrib
+)
 {
-	meshes.reserve(temp_shapes.size());
-	
+	struct MeshBuilder
+	{
+		std::vector<Vertex> vertices;
+		std::vector<unsigned> indices;
+		std::unordered_map<Vertex, uint32_t> unique_vertices;
+	};
+
+	meshes.clear();
+
 	for (const auto& shape : temp_shapes)
 	{
-		std::unordered_map<Vertex, uint32_t> unique_vertices;
-		unique_vertices.reserve(shape.mesh.indices.size());
+		std::unordered_map<int, MeshBuilder> builders;
 
-		std::vector<Vertex> vertices{};
-		std::vector<unsigned> indices{};
-		vertices.reserve(shape.mesh.indices.size());
-		indices.reserve(shape.mesh.indices.size());
+		size_t indexOffset = 0;
 
-		size_t index_offset = 0;
-		for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++)
+		for (size_t faceIndex = 0; faceIndex < shape.mesh.num_face_vertices.size(); ++faceIndex)
 		{
-			for (size_t v = 0; v < 3; v++)
-			{
-				Vertex vertex{};
-				const auto index = shape.mesh.indices[index_offset + v];
+			const int faceVertexCount = shape.mesh.num_face_vertices[faceIndex];
 
-				vertex.position =
+			if (faceVertexCount < 3)
+			{
+				indexOffset += faceVertexCount;
+				continue;
+			}
+
+			int materialId = 0;
+
+			if (faceIndex < shape.mesh.material_ids.size() &&
+				shape.mesh.material_ids[faceIndex] >= 0)
+			{
+				materialId = shape.mesh.material_ids[faceIndex];
+			}
+
+			MeshBuilder& builder = builders[materialId];
+
+			for (int v = 0; v < faceVertexCount; ++v)
+			{
+				const tinyobj::index_t index =
+					shape.mesh.indices[indexOffset + static_cast<size_t>(v)];
+
+				Vertex vertex{};
+
+				if (index.vertex_index >= 0)
 				{
-					temp_attrib.vertices[3 * index.vertex_index + 0],
-					temp_attrib.vertices[3 * index.vertex_index + 1],
-					temp_attrib.vertices[3 * index.vertex_index + 2],
-				};
+					vertex.position =
+					{
+						temp_attrib.vertices[3 * index.vertex_index + 0],
+						temp_attrib.vertices[3 * index.vertex_index + 1],
+						temp_attrib.vertices[3 * index.vertex_index + 2]
+					};
+				}
 
 				if (index.normal_index >= 0)
 				{
@@ -202,8 +279,12 @@ void Loader::LoadMeshes(std::vector<std::shared_ptr<Mesh>>& meshes, const std::v
 					{
 						temp_attrib.normals[3 * index.normal_index + 0],
 						temp_attrib.normals[3 * index.normal_index + 1],
-						temp_attrib.normals[3 * index.normal_index + 2],
+						temp_attrib.normals[3 * index.normal_index + 2]
 					};
+				}
+				else
+				{
+					vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
 				}
 
 				if (index.texcoord_index >= 0)
@@ -211,31 +292,41 @@ void Loader::LoadMeshes(std::vector<std::shared_ptr<Mesh>>& meshes, const std::v
 					vertex.uv =
 					{
 						temp_attrib.texcoords[2 * index.texcoord_index + 0],
-						temp_attrib.texcoords[2 * index.texcoord_index + 1],
+						temp_attrib.texcoords[2 * index.texcoord_index + 1]
 					};
 				}
-
-				if (!unique_vertices.contains(vertex))
+				else
 				{
-					unique_vertices[vertex] = static_cast<unsigned>(vertices.size());
-					vertices.push_back(vertex);
+					vertex.uv = glm::vec2(0.0f);
 				}
-				indices.push_back(unique_vertices[vertex]);
+
+				if (!builder.unique_vertices.contains(vertex))
+				{
+					builder.unique_vertices[vertex] =
+						static_cast<uint32_t>(builder.vertices.size());
+
+					builder.vertices.push_back(vertex);
+				}
+
+				builder.indices.push_back(builder.unique_vertices[vertex]);
 			}
-			index_offset += 3;
+
+			indexOffset += faceVertexCount;
 		}
 
-		int materialId = 0;
-
-		if (!shape.mesh.material_ids.empty() && shape.mesh.material_ids[0] >= 0)
+		for (auto& [materialId, builder] : builders)
 		{
-			materialId = shape.mesh.material_ids[0];
+			if (!builder.vertices.empty() && !builder.indices.empty())
+			{
+				meshes.push_back(std::make_shared<Mesh>(
+					builder.vertices,
+					builder.indices,
+					materialId
+				));
+			}
 		}
-
-		meshes.push_back(std::make_shared<Mesh>(vertices, indices, materialId));
 	}
 }
-
 
 // ============================================================================
 // Convenience wrappers 

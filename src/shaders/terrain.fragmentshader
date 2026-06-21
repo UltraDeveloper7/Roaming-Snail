@@ -144,6 +144,40 @@ vec3 GetTerrainBaseColor(vec3 normal)
     return baseColor;
 }
 
+vec3 ApplyNormalMap(vec3 geometryNormal)
+{
+    if (!material.hasNormalMap)
+    {
+        return normalize(geometryNormal);
+    }
+
+    vec3 tangentNormal = texture(material.normalMap, vTexCoord).xyz * 2.0 - 1.0;
+
+    vec3 q1 = dFdx(vWorldPos);
+    vec3 q2 = dFdy(vWorldPos);
+
+    vec2 st1 = dFdx(vTexCoord);
+    vec2 st2 = dFdy(vTexCoord);
+
+    vec3 N = normalize(geometryNormal);
+
+    vec3 T = q1 * st2.t - q2 * st1.t;
+
+    if (length(T) < 0.0001)
+    {
+        return N;
+    }
+
+    T = normalize(T);
+
+    vec3 B = normalize(cross(N, T));
+
+    mat3 TBN = mat3(T, B, N);
+
+    return normalize(TBN * tangentNormal);
+}
+
+
 void main()
 {
     vec3 normal = normalize(vNormal);
@@ -185,13 +219,14 @@ void main()
             aoValue = clamp(aoValue, 0.0, 1.0);
         }
 
-        baseColor *= uColorTint;
-        baseColor *= 1.18;
-        baseColor = clamp(baseColor, vec3(0.02), vec3(1.0));
+        if (material.hasNormalMap)
+        {
+            normal = ApplyNormalMap(normal);
+        }
 
-        // Card vegetation and simple OBJ materials look better with softer foliage-like normals.
-        // Snail shell/body still keep object silhouette through geometry, but lighting stays less harsh.
-        normal = normalize(mix(normal, vec3(0.0, 1.0, 0.35), 0.20));
+        baseColor *= uColorTint;
+        baseColor *= 1.08;
+        baseColor = clamp(baseColor, vec3(0.02), vec3(1.0));
     }
     else if (uUseVertexColor)
     {
@@ -239,6 +274,12 @@ void main()
     {
         float dist = length(vWorldPos - uCameraPos);
         float fogFactor = smoothstep(uFogStart, uFogEnd, dist);
+
+        if (uUseMaterial)
+        {
+            fogFactor *= 0.35;
+        }
+
         color = mix(color, uFogColor, fogFactor);
     }
 
