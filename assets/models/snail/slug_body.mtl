@@ -1,15 +1,37 @@
 newmtl SlugBody
-Ka 0.18 0.12 0.08
-Kd 0.62 0.47 0.34
+Ka 0.20 0.135 0.095
+Kd 0.63 0.47 0.34
+Ks 0.18 0.15 0.12
+Ns 38.0
+Pr 0.34
+d 1.0
+map_Kd snail/body_diffuse.jpg
+map_Bump snail/body_normal.jpg
+
+newmtl SlugFoot
+Ka 0.16 0.10 0.075
+Kd 0.48 0.34 0.25
+Ks 0.12 0.10 0.08
+Ns 24.0
+Pr 0.62
+d 1.0
+map_Kd snail/body_diffuse.jpg
+map_Bump snail/body_normal.jpg
+
+newmtl SlugCrease
+Ka 0.12 0.075 0.055
+Kd 0.38 0.27 0.20
 Ks 0.10 0.08 0.06
-Ns 28.0
+Ns 18.0
+Pr 0.70
 d 1.0
 map_Kd snail/body_diffuse.jpg
 map_Bump snail/body_normal.jpg
 
 newmtl EyeBlack
-Ka 0.01 0.01 0.01
-Kd 0.02 0.02 0.018
-Ks 0.60 0.60 0.55
-Ns 96.0
+Ka 0.006 0.006 0.005
+Kd 0.018 0.016 0.014
+Ks 0.72 0.70 0.66
+Ns 120.0
+Pr 0.18
 d 1.0
