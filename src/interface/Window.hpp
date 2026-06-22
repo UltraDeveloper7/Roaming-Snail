@@ -11,6 +11,7 @@ public:
     Window(Window&&) = delete;
     Window& operator=(Window&&) = delete;
 
+    // Thin GLFW wrapper API used by App.
     [[nodiscard]] bool ShouldClose() const;
     void SetCloseFlag();
     [[nodiscard]] GLFWwindow* GetGLFWWindow() const;
@@ -19,23 +20,24 @@ public:
     [[nodiscard]] int GetHeight() const;
     void ResetResizedFlag();
 
-    // (Optional helpers—safe to ignore; no breaking changes)
+    // Context/presentation helpers.
     void MakeContextCurrent();
     void SwapBuffers();
     void SetVSync(bool on);
     void SetWin32WindowIconFromICO(const wchar_t* path);
 
 private:
-    // GLFW callbacks (static C hooks) -> forward to 'this'
+    // GLFW callbacks are static C hooks; implementation forwards them to the
+    // Window instance stored in glfwSetWindowUserPointer.
     static void OnFramebufferResized(GLFWwindow* window, int width, int height);
     static void OnError(int error, const char* description);
 
-    // init stages
+    // Initialization stages kept separate for easier debugging/presentation.
     void initGlfw();
     void createWindow();
     void loadGL();
 
-    // state
+    // Window state mirrored from GLFW callbacks.
     int          width_ = 0;
     int          height_ = 0;
     bool         resized_ = false;

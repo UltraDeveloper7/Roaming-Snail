@@ -3,11 +3,15 @@
 
 namespace
 {
+	// Removes the component of value that points into normal. This is the core
+	// operation for "move along the terrain surface" behavior.
 	glm::vec3 ProjectOnPlane(const glm::vec3& value, const glm::vec3& normal)
 	{
 		return value - normal * glm::dot(value, normal);
 	}
 
+	// Keeps extreme slopes, launch boosts, and frame spikes from creating
+	// uncontrollable shell velocities.
 	void ClampVelocity(
 		ShellPhysics::State& state,
 		const ShellPhysics::Settings& settings
@@ -32,6 +36,9 @@ namespace
 		);
 	}
 
+	// Detects hill crests. The shell launches only when it has enough speed,
+	// the surface is not too steep, and it has been grounded long enough to
+	// avoid instant re-launches after landing.
 	bool ShouldLaunchFromHill(
 		const ShellPhysics::State& state,
 		const ShellPhysics::Settings& settings,
@@ -63,6 +70,9 @@ namespace
 		return true;
 	}
 
+	// Converts horizontal travel speed into a rolling visual quaternion. This
+	// keeps shell rotation presentation-driven instead of feeding it back into
+	// the collision solver.
 	void UpdateSpin(
 		ShellPhysics::State& state,
 		float dt,
@@ -103,6 +113,8 @@ namespace
 		state.angular_velocity = axis * angularSpeed;
 	}
 
+	// Solves shell-vs-terrain contact. It separates hard penetration correction,
+	// bounce response, and near-ground snapping so rolling feels stable on hills.
 	void ResolveTerrainCollision(
 		ShellPhysics::State& state,
 		glm::vec3& position,
@@ -171,6 +183,8 @@ namespace
 			return;
 		}
 
+		// When the shell is slightly above the ground and falling slowly, snap it
+		// back to the surface instead of leaving tiny visual gaps.
 		if (state.velocity.y <= 0.0f && state.ground_contact_time > 0.05f)
 		{
 			position.y = targetY;
@@ -181,6 +195,9 @@ namespace
 		}
 	}
 
+	// One small physics integration step. Step() calls this multiple times per
+	// frame to reduce tunneling and make collision response less dependent on
+	// frame rate.
 	void IntegrateSubstep(
 		ShellPhysics::State& state,
 		glm::vec3& position,
@@ -202,6 +219,7 @@ namespace
 			state.air_time = 0.0f;
 			state.ground_contact_time += dt;
 
+			// Gravity projected onto the terrain gives natural downhill rolling.
 			const glm::vec3 downhill =
 				ProjectOnPlane(gravity, terrainNormal);
 
@@ -218,6 +236,8 @@ namespace
 
 			state.velocity = ProjectOnPlane(state.velocity, terrainNormal);
 
+			// Friction increases slightly on slopes so the shell remains readable
+			// and does not accelerate forever.
 			const float upDot =
 				glm::dot(terrainNormal, glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -301,6 +321,8 @@ namespace ShellPhysics
 		const Settings& settings
 	)
 	{
+		// Clamp dt before substepping so a stalled frame cannot launch the shell
+		// through the terrain.
 		dt = glm::clamp(dt, 0.0f, 1.0f / 20.0f);
 
 		const int substeps = glm::max(1, settings.substeps);
@@ -322,6 +344,7 @@ namespace ShellPhysics
 
 		if (glm::length2(hv) > 0.01f)
 		{
+			// Align character yaw to actual travel direction while rolling.
 			const glm::vec3 direction = glm::normalize(hv);
 			yaw = std::atan2(direction.x, -direction.z);
 		}

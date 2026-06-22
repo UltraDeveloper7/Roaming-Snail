@@ -47,6 +47,8 @@ void Terrain::SetModelMatrix(const glm::mat4& model)
 
 void Terrain::Generate(int resolution, float size)
 {
+    // The mesh is generated from the same height function used later by
+    // GetHeightAt(), so gameplay physics and rendered terrain stay aligned.
     resolution_ = resolution;
     size_ = size;
     half_size_ = size * 0.5f;
@@ -76,6 +78,8 @@ void Terrain::Generate(int resolution, float size)
             const int tileX = static_cast<int>(std::floor(worldX));
             const int tileZ = static_cast<int>(std::floor(worldZ));
 
+            // Keep the raw world-scaled UVs. The fragment shader and
+            // TransformTileUV path can use them to break up repetition.
             vertex.uv = uv;
 
             vertices_.push_back(vertex);
@@ -171,6 +175,8 @@ void Terrain::Generate(int resolution, float size)
 
 void Terrain::RecalculateNormals()
 {
+    // Accumulate each face normal into its three vertices, then normalize.
+    // This is a standard smooth-shading pass for generated grid terrain.
     for (Vertex& vertex : vertices_)
     {
         vertex.normal = glm::vec3(0.0f);
@@ -214,6 +220,8 @@ glm::vec3 Terrain::GetNormalAt(float x, float z) const
 {
     const float eps = 0.1f;
 
+    // Central differences estimate the slope directly from the procedural
+    // height function. This avoids needing to search the generated mesh.
     const float hL = GetHeightAt(x - eps, z);
     const float hR = GetHeightAt(x + eps, z);
     const float hD = GetHeightAt(x, z - eps);
@@ -225,6 +233,8 @@ glm::vec3 Terrain::GetNormalAt(float x, float z) const
 
 glm::vec2 Terrain::TransformTileUV(glm::vec2 uv, int tileX, int tileZ) const
 {
+    // Deterministic integer hash based on tile coordinates. It produces stable
+    // pseudo-random rotation/flips without storing extra per-tile data.
     unsigned int seed =
         static_cast<unsigned int>(tileX * 73856093) ^
         static_cast<unsigned int>(tileZ * 19349663);

@@ -16,6 +16,8 @@ void Vegetation::Generate(const Terrain& terrain, int count, float terrainBound)
 	plants_.clear();
 	plants_.reserve(static_cast<size_t>(count));
 
+	// Fixed seed makes placement deterministic, which is important for demos,
+	// screenshots, and comparing future visual improvements.
 	std::mt19937 rng(1337);
 
 	std::uniform_real_distribution<float> posDist(-terrainBound, terrainBound);
@@ -38,6 +40,8 @@ void Vegetation::Generate(const Terrain& terrain, int count, float terrainBound)
 	{
 		Plant plant;
 
+		// Place in X/Z first, then query terrain height so every plant sits on
+		// top of the procedural surface.
 		plant.position.x = posDist(rng);
 		plant.position.z = posDist(rng);
 		plant.position.y = terrain.GetHeightAt(plant.position.x, plant.position.z);
@@ -73,6 +77,7 @@ void Vegetation::Update(float dt)
 {
 	for (Plant& plant : plants_)
 	{
+		// Bend decays exponentially at a frame-rate-independent rate.
 		plant.bend *= std::pow(0.88f, dt * 60.0f);
 
 		if (std::abs(plant.bend) < 0.001f)
@@ -137,6 +142,7 @@ bool Vegetation::TryEat(const glm::vec3& snailPosition, float radius)
 {
 	return ForEachPlantInRadius(snailPosition, radius, [](Plant& plant)
 	{
+		// Eating removes one nearby plant and stops the search immediately.
 		plant.eaten = true;
 		return true;
 	});
@@ -146,6 +152,7 @@ bool Vegetation::TryHitShell(const glm::vec3& shellPosition, float radius)
 {
 	return ForEachPlantInRadius(shellPosition, radius, [](Plant& plant)
 	{
+		// A shell hit bends every nearby plant found by the radius query.
 		plant.bend = 0.55f;
 		return false;
 	});
@@ -155,6 +162,8 @@ glm::mat4 Vegetation::BuildPlantModel(const Plant& plant) const
 {
 	glm::mat4 model{ 1.0f };
 
+	// Transform order matters: position first, then local rotations/lean/bend,
+	// then scale around the plant origin at ground level.
 	model = glm::translate(model, plant.position);
 
 	model = glm::rotate(

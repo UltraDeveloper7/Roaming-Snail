@@ -9,6 +9,7 @@ App::App() :
 	window_(std::make_unique<Window>()),
 	camera_(std::make_unique<Camera>())
 {
+	// Global OpenGL state that remains active for most of the application.
 	camera_->Init();
 
 	glEnable(GL_DEPTH_TEST);
@@ -23,6 +24,7 @@ App::App() :
 
 	glClearColor(0.10f, 0.14f, 0.18f, 1.0f);
 
+	// Shader construction is centralized here so asset paths stay in Config.
 	terrain_shader_ = std::make_shared<Shader>(
 		Config::terrain_vertex_path,
 		Config::terrain_fragment_path
@@ -52,6 +54,7 @@ App::App() :
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, window_->GetWidth(), window_->GetHeight());
 
+	// Post-processing must be initialized after the window/context exists.
 	InitPostProcessing();
 
 	lighting_ = std::make_unique<SceneLighting>();
@@ -59,6 +62,8 @@ App::App() :
 
 	LoadTerrainTexture();
 
+	// World and gameplay systems are initialized in dependency order: terrain
+	// first, then objects that need terrain height samples.
 	terrain_ = std::make_unique<Terrain>();
 	terrain_->Generate(Config::terrain_resolution, Config::terrain_size);
 	terrain_->SetTexture(static_cast<GLuint>(terrain_texture_->GetId()));
@@ -88,6 +93,8 @@ void App::Run()
 	{
 		glfwPollEvents();
 
+		// Resize is handled before update/render so all matrices and framebuffers
+		// match the new viewport during the same frame.
 		if (window_->Resized())
 		{
 			OnResize();
@@ -101,6 +108,8 @@ void App::Run()
 
 void App::OnUpdate()
 {
+	// delta_time_ is stored in seconds and used by every frame-rate-independent
+	// system.
 	const double current_frame = glfwGetTime();
 	delta_time_ = current_frame - last_frame_;
 	last_frame_ = current_frame;
@@ -109,6 +118,8 @@ void App::OnUpdate()
 
 	if (menu_)
 	{
+		// Menu::Draw() builds UI text and Menu::ConsumeAction() reports the
+		// selected action back to App.
 		menu_->Draw(has_started_, paused_);
 
 		const MenuAction action = menu_->ConsumeAction();
@@ -159,6 +170,8 @@ void App::OnUpdate()
 
 	if (gameplayActive)
 	{
+		// Gameplay updates are paused when the menu/pause overlay is active, but
+		// rendering continues so the scene remains visible behind UI.
 		if (camera_)
 		{
 			camera_->Update(static_cast<float>(delta_time_));
@@ -177,6 +190,8 @@ void App::OnUpdate()
 		{
 			const glm::vec3 snailPosition = snail_->GetPosition();
 
+			// Vegetation has two interactions: shell mode bends/slows plants,
+			// normal mode eats one plant and rewards speed.
 			if (snail_->IsShellMode())
 			{
 				const bool hitVegetation = vegetation_->TryHitShell(
@@ -217,6 +232,7 @@ void App::OnUpdate()
 		paused_ ||
 		(menu_ && menu_->IsAnyModalOpen());
 
+	// Release the cursor for menus and lock it for gameplay camera control.
 	if (menuMode)
 	{
 		glfwSetInputMode(window_->GetGLFWWindow(), GLFW_CURSOR, GLFW_CURSOR_NORMAL);
@@ -273,12 +289,19 @@ void App::ProcessInput()
 
 void App::Render()
 {
+	// Render order:
+	// 1. shadow map
+	// 2. scene into HDR framebuffer
+	// 3. post-process to the screen
+	// 4. UI text on top
 	RenderShadowPass();
 
 	BeginSceneFramebuffer();
 
 	if (terrain_shader_ && camera_)
 	{
+		// Shared scene uniforms are uploaded once before drawing all objects that
+		// use the main terrain/material shader.
 		terrain_shader_->Bind();
 
 		terrain_shader_->SetMat4(camera_->GetViewMatrix(), "uView");
@@ -369,6 +392,8 @@ void App::RenderShadowPass()
 
 	lighting_->BeginShadowPass();
 
+	// Depth shader receives the light-space matrix once, then every drawable
+	// object supplies its own model matrix.
 	depth_shader_->Bind();
 	depth_shader_->SetMat4(lighting_->GetLightSpaceMatrix(), "lightSpaceMatrix");
 	depth_shader_->SetMat4(lighting_->GetLightSpaceMatrix(), "uLightSpaceMatrix");
@@ -398,6 +423,8 @@ void App::OnResize()
 	const int new_width = window_->GetWidth();
 	const int new_height = window_->GetHeight();
 
+	// Every screen-size-dependent system must be updated together: GL viewport,
+	// camera projection, post-processing textures, and UI projection.
 	glViewport(0, 0, new_width, new_height);
 
 	if (camera_)
@@ -454,6 +481,7 @@ void App::LoadTerrainTexture()
 
 void App::InitPostProcessing()
 {
+	// Fullscreen quad in clip space. It is reused for blur and final screen pass.
 	const float quadVertices[] =
 	{
 		-1.0f,  1.0f, 0.0f, 1.0f,
@@ -499,6 +527,7 @@ void App::InitPostProcessing()
 
 void App::ResizePostProcessing(int width, int height)
 {
+	// Recreate all framebuffer-sized textures when the window changes size.
 	GLUtils::DeleteFramebuffer(scene_fbo_);
 	GLUtils::DeleteTexture(scene_color_texture_);
 	GLUtils::DeleteRenderbuffer(scene_depth_rbo_);
@@ -555,6 +584,7 @@ void App::ResizePostProcessing(int width, int height)
 	glGenFramebuffers(2, pingpong_fbo_);
 	glGenTextures(2, pingpong_color_);
 
+	// Ping-pong buffers alternate horizontal and vertical blur passes.
 	for (int i = 0; i < 2; ++i)
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, pingpong_fbo_[i]);
@@ -647,6 +677,8 @@ void App::RenderPostProcess(bool blurBackground)
 
 	if (blurAmount > 0 && blur_shader_)
 	{
+		// Separable blur: alternate horizontal and vertical passes between two
+		// framebuffers. This is much cheaper than a full 2D blur kernel.
 		bool horizontal = true;
 		bool firstIteration = true;
 		int lastTarget = 0;

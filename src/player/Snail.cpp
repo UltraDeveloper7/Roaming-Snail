@@ -179,6 +179,9 @@ void Snail::Update(float dt, GLFWwindow* window, const Terrain& terrain)
 	{
 		ClampToTerrainBounds();
 
+		// In normal/retracting modes the snail is anchored to terrain height by
+		// a simple body or shell offset. Full shell mode delegates height/contact
+		// handling to ShellPhysics.
 		const float terrainHeight =
 			terrain.GetHeightAt(position_.x, position_.z);
 
@@ -244,6 +247,8 @@ void Snail::UpdateNormalMovement(float dt, GLFWwindow* window)
 	forward_ =
 		glm::normalize(glm::vec3(std::sin(yaw_), 0.0f, -std::cos(yaw_)));
 
+	// Arrow keys are converted into movement along the current forward vector.
+	// The terrain-following orientation is applied later in BuildModelMatrix().
 	glm::vec3 moveDirection{ 0.0f };
 
 	if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
@@ -399,6 +404,7 @@ void Snail::UpdateRetractAnimation(float dt)
 {
 	if (mode_ == Mode::Retracting)
 	{
+		// Move toward shell-only mode.
 		retract_progress_ += retract_speed_ * dt;
 
 		if (retract_progress_ >= 1.0f)
@@ -410,6 +416,7 @@ void Snail::UpdateRetractAnimation(float dt)
 	}
 	else if (mode_ == Mode::Unretracting)
 	{
+		// Restore the body from shell-only mode.
 		retract_progress_ -= retract_speed_ * dt;
 
 		if (retract_progress_ <= 0.0f)
@@ -435,6 +442,8 @@ void Snail::UpdateOrientationFromTerrain(const Terrain& terrain)
 	glm::vec3 projectedForward =
 		forward_ - glm::dot(forward_, up_) * up_;
 
+	// Project forward onto the slope plane so the snail leans with the terrain
+	// but still faces its horizontal movement direction.
 	if (glm::length(projectedForward) < 0.001f)
 	{
 		projectedForward =
@@ -456,6 +465,8 @@ glm::mat4 Snail::BuildModelMatrix(
 	const glm::vec3& localScale
 ) const
 {
+	// Convert a local offset to world space using the terrain-aligned basis.
+	// local +Z is treated as "back" relative to forward_.
 	glm::vec3 worldOffset =
 		right_ * localOffset.x +
 		up_ * localOffset.y -
@@ -473,6 +484,7 @@ glm::mat4 Snail::ComputeBodyModelMatrix() const
 {
 	const float bodyVisibility = 1.0f - retract_progress_;
 
+	// As the snail retracts, the body slides toward the shell and scales down.
 	const glm::vec3 bodyOffset = glm::mix(
 		Config::slug_body_normal_offset,
 		Config::slug_body_retracted_offset,
@@ -497,6 +509,8 @@ glm::mat4 Snail::ComputeShellModelMatrix() const
 
 	if (mode_ == Mode::Shell)
 	{
+		// Shell-only mode uses a centered/lifted transform so the rear-mounted
+		// shell asset can roll without visibly clipping into terrain.
 		glm::mat4 shellModel = BuildModelMatrix(
 			Config::shell_rolling_draw_offset,
 			glm::vec3(Config::shell_draw_scale) * shellPulse
@@ -717,6 +731,8 @@ void Snail::DrawDepth(const std::shared_ptr<Shader>& shader) const
 
 void Snail::ApplySpeedBoost(float duration, float multiplier)
 {
+	// Keep the strongest/longest active boost rather than stacking boosts
+	// exponentially.
 	speed_boost_timer_ =
 		glm::max(speed_boost_timer_, duration);
 
