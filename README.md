@@ -67,7 +67,7 @@ The project is designed as a real-time graphics and interaction assignment. It f
 
 ### Main Menu
 
-![Main Menu](docs/images/main_menu.png)
+![Main Menu]([docs/images/main_menu.png](https://github.com/user-attachments/assets/e4b30448-54d0-4d6f-b3d8-ad2eaf8262f9))
 <img width="1919" height="1028" alt="main menu" src="https://github.com/user-attachments/assets/e4b30448-54d0-4d6f-b3d8-ad2eaf8262f9" />
 
 ### Gameplay
