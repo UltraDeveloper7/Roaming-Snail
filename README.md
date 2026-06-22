@@ -67,7 +67,7 @@ The project is designed as a real-time graphics and interaction assignment. It f
 
 ### Main Menu
 
-![Main Menu](docs/images/main menu.png)
+![Main Menu](docs/images/main_menu.png)
 
 ### Gameplay
 
