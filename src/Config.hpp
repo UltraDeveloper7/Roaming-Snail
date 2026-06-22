@@ -206,6 +206,12 @@ struct Config final
 	inline static constexpr glm::vec3 shell_draw_offset =
 		glm::vec3(0.0f, 0.095f, 0.25f);
 
+	inline static constexpr glm::vec3 shell_rolling_draw_offset =
+		glm::vec3(0.0f, 0.42f, 0.0f);
+
+	inline static constexpr glm::vec3 shell_rolling_center_correction =
+		glm::vec3(0.015f, -0.31f, -0.80f);
+
 	inline static constexpr float shell_draw_scale = 1.0f;
 
 	inline static constexpr float shell_retract_pulse = 0.08f;

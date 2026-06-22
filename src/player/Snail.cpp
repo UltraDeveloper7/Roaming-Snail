@@ -495,17 +495,26 @@ glm::mat4 Snail::ComputeShellModelMatrix() const
 	const float shellPulse =
 		1.0f + Config::shell_retract_pulse * retract_progress_;
 
-	glm::mat4 shellModel = BuildModelMatrix(
+	if (mode_ == Mode::Shell)
+	{
+		glm::mat4 shellModel = BuildModelMatrix(
+			Config::shell_rolling_draw_offset,
+			glm::vec3(Config::shell_draw_scale) * shellPulse
+		);
+
+		shellModel *= glm::mat4_cast(shell_physics_.rotation);
+		shellModel = glm::translate(
+			shellModel,
+			Config::shell_rolling_center_correction
+		);
+
+		return shellModel;
+	}
+
+	return BuildModelMatrix(
 		Config::shell_draw_offset,
 		glm::vec3(Config::shell_draw_scale) * shellPulse
 	);
-
-	if (mode_ == Mode::Shell)
-	{
-		shellModel *= glm::mat4_cast(shell_physics_.rotation);
-	}
-
-	return shellModel;
 }
 
 bool Snail::IsBodyVisible() const
