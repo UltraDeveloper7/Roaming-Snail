@@ -321,20 +321,11 @@ void App::Render()
 
 		terrain_shader_->SetInt(0, "uTerrainTexture");
 
-		terrain_shader_->SetInt(1, "irradianceMap");
-		terrain_shader_->SetInt(2, "prefilterMap");
-		terrain_shader_->SetInt(3, "brdfLUT");
-
 		terrain_shader_->SetInt(4, "material.diffuseMap");
 		terrain_shader_->SetInt(5, "material.roughnessMap");
 		terrain_shader_->SetInt(6, "material.normalMap");
 		terrain_shader_->SetInt(7, "material.aoMap");
 		terrain_shader_->SetInt(8, "material.metallicMap");
-
-		if (environment_)
-		{
-			environment_->Prepare();
-		}
 
 		if (lighting_)
 		{

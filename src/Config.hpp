@@ -113,18 +113,6 @@ struct Config final
 	inline static constexpr const char* const cubemap_fragment_path =
 		"cubemap.fragmentshader";
 
-	inline static constexpr const char* const irradiance_fragment_path =
-		"irradiance.fragmentshader";
-
-	inline static constexpr const char* const prefilter_fragment_path =
-		"prefilter.fragmentshader";
-
-	inline static constexpr const char* const brdf_vertex_path =
-		"brdf.vertexshader";
-
-	inline static constexpr const char* const brdf_fragment_path =
-		"brdf.fragmentshader";
-
 	inline static constexpr const char* const depth_vertex_path =
 		"Depth.vertexshader";
 
@@ -279,13 +267,10 @@ struct Config final
 
 
 	// ============================================================
-	// 13. Environment / IBL / PBR
+	// 13. Environment / skybox
 	// ============================================================
 
 	inline static constexpr int cube_map_size = 4096;
-	inline static constexpr int irradiance_scale = 128;
-	inline static constexpr int prefilter_scale = 1024;
-	inline static constexpr int max_mip_levels = 7;
 
 
 	// ============================================================
